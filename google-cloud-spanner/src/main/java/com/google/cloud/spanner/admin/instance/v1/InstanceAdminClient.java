@@ -1396,6 +1396,7 @@ public class InstanceAdminClient implements BackgroundResource {
    *       SetIamPolicyRequest.newBuilder()
    *           .setResource(ProjectName.of("[PROJECT]").toString())
    *           .setPolicy(Policy.newBuilder().build())
+   *           .setUpdateMask(FieldMask.newBuilder().build())
    *           .build();
    *   Policy response = instanceAdminClient.setIamPolicy(request);
    * }
@@ -1423,6 +1424,7 @@ public class InstanceAdminClient implements BackgroundResource {
    *       SetIamPolicyRequest.newBuilder()
    *           .setResource(ProjectName.of("[PROJECT]").toString())
    *           .setPolicy(Policy.newBuilder().build())
+   *           .setUpdateMask(FieldMask.newBuilder().build())
    *           .build();
    *   ApiFuture<Policy> future = instanceAdminClient.setIamPolicyCallable().futureCall(request);
    *   // Do something.
