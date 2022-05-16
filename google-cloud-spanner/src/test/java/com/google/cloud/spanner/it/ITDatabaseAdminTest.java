@@ -17,12 +17,16 @@
 package com.google.cloud.spanner.it;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.google.api.gax.longrunning.OperationFuture;
 import com.google.api.gax.paging.Page;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseRole;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.IntegrationTestEnv;
 import com.google.cloud.spanner.Options;
@@ -31,11 +35,11 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.testing.RemoteSpannerHelper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Iterators;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
@@ -70,44 +74,52 @@ public class ITDatabaseAdminTest {
   }
 
   @Test
-  public void databaseOperations() throws Exception {
-    String dbId = testHelper.getUniqueDatabaseId();
-    String instanceId = testHelper.getInstanceId().getInstance();
-    String statement1 = "CREATE TABLE T (\n" + "  K STRING(MAX),\n" + ") PRIMARY KEY(K)";
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        dbAdminClient.createDatabase(instanceId, dbId, ImmutableList.of(statement1));
-    Database db = op.get(TIMEOUT_MINUTES, TimeUnit.MINUTES);
-    dbs.add(db);
-    assertThat(db.getId().getDatabase()).isEqualTo(dbId);
+  public void testDatabaseOperations() throws Exception {
+    final String databaseId = testHelper.getUniqueDatabaseId();
+    final String instanceId = testHelper.getInstanceId().getInstance();
+    final String createTableT = "CREATE TABLE T (\n" + "  K STRING(MAX),\n" + ") PRIMARY KEY(K)";
 
-    db = dbAdminClient.getDatabase(instanceId, dbId);
-    assertThat(db.getId().getDatabase()).isEqualTo(dbId);
+    final Database createdDatabase =
+        dbAdminClient
+            .createDatabase(instanceId, databaseId, ImmutableList.of(createTableT))
+            .get(5, TimeUnit.MINUTES);
+    dbs.add(createdDatabase);
 
-    boolean foundDb = false;
-    for (Database dbInList :
-        Iterators.toArray(
-            dbAdminClient.listDatabases(instanceId).iterateAll().iterator(), Database.class)) {
-      if (dbInList.getId().getDatabase().equals(dbId)) {
-        foundDb = true;
+    assertEquals(databaseId, createdDatabase.getId().getDatabase());
+    assertEquals(Dialect.GOOGLE_STANDARD_SQL, createdDatabase.getDialect());
+
+    final Database retrievedDatabase = dbAdminClient.getDatabase(instanceId, databaseId);
+    assertEquals(databaseId, retrievedDatabase.getId().getDatabase());
+    assertEquals(Dialect.GOOGLE_STANDARD_SQL, retrievedDatabase.getDialect());
+
+    Optional<Database> maybeDatabaseInList = Optional.empty();
+    for (Database listedDatabase : dbAdminClient.listDatabases(instanceId).iterateAll()) {
+      if (listedDatabase.getId().getDatabase().equals(databaseId)) {
+        maybeDatabaseInList = Optional.of(listedDatabase);
         break;
       }
     }
-    assertThat(foundDb).isTrue();
+    assertTrue("Expected to find database in list", maybeDatabaseInList.isPresent());
+    assertEquals(databaseId, maybeDatabaseInList.get().getId().getDatabase());
+    assertEquals(Dialect.GOOGLE_STANDARD_SQL, maybeDatabaseInList.get().getDialect());
 
-    String statement2 = "CREATE TABLE T2 (\n" + "  K2 STRING(MAX),\n" + ") PRIMARY KEY(K2)";
-    OperationFuture<?, ?> op2 =
-        dbAdminClient.updateDatabaseDdl(instanceId, dbId, ImmutableList.of(statement2), null);
-    op2.get(TIMEOUT_MINUTES, TimeUnit.MINUTES);
-    List<String> statementsInDb = dbAdminClient.getDatabaseDdl(instanceId, dbId);
-    assertThat(statementsInDb).containsExactly(statement1, statement2);
+    final String createTableT2 =
+        "CREATE TABLE T2 (\n" + "  K2 STRING(MAX),\n" + ") PRIMARY KEY(K2)";
+    dbAdminClient
+        .updateDatabaseDdl(instanceId, databaseId, ImmutableList.of(createTableT2), null)
+        .get(5, TimeUnit.MINUTES);
 
-    dbAdminClient.dropDatabase(instanceId, dbId);
+    final List<String> databaseDdl = dbAdminClient.getDatabaseDdl(instanceId, databaseId);
+    assertEquals(databaseDdl, ImmutableList.of(createTableT, createTableT2));
+
+    dbAdminClient.dropDatabase(instanceId, databaseId);
     dbs.clear();
+
     try {
-      dbAdminClient.getDatabase(testHelper.getInstanceId().getInstance(), dbId);
+      dbAdminClient.getDatabase(instanceId, databaseId);
       fail("Expected exception");
-    } catch (SpannerException ex) {
-      assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND);
+    } catch (SpannerException e) {
+      assertEquals(ErrorCode.NOT_FOUND, e.getErrorCode());
     }
   }
 
@@ -193,5 +205,65 @@ public class ITDatabaseAdminTest {
       page = page.getNextPage();
     }
     assertThat(dbIdsGot).containsAtLeastElementsIn(dbIds);
+  }
+
+  @Test
+  public void createAndListDatabaseRoles() throws Exception {
+    List<String> dbRoles =
+        ImmutableList.of(
+            testHelper.getUniqueDatabaseRole(),
+            testHelper.getUniqueDatabaseRole(),
+            testHelper.getUniqueDatabaseRole());
+
+    String instanceId = testHelper.getInstanceId().getInstance();
+    Database database =
+        dbAdminClient
+            .createDatabase(instanceId, testHelper.getUniqueDatabaseId(), ImmutableList.of())
+            .get();
+
+    // Create the roles in Db.
+    List<String> dbRolesCreateStatements = new ArrayList<>();
+    for (String dbRole : dbRoles) {
+      dbRolesCreateStatements.add(String.format("CREATE ROLE %s", dbRole));
+    }
+    dbAdminClient
+        .updateDatabaseDdl(
+            instanceId, database.getId().getDatabase(), dbRolesCreateStatements, null)
+        .get();
+
+    // List roles from Db.
+    Page<DatabaseRole> page =
+        dbAdminClient.listDatabaseRoles(instanceId, database.getId().getDatabase());
+    List<String> dbRolesGot = new ArrayList<>();
+    while (page != null && page.getValues().iterator().hasNext()) {
+      for (DatabaseRole value : page.getValues()) {
+        String[] split = value.getName().split("/");
+        dbRolesGot.add(split[split.length - 1]);
+      }
+      page = page.getNextPage();
+    }
+    assertThat(dbRolesGot).containsAtLeastElementsIn(dbRoles);
+
+    // Delete the created roles.
+    List<String> dbRolesDropStatements = new ArrayList<>();
+    for (String dbRole : dbRoles) {
+      dbRolesDropStatements.add(String.format("DROP ROLE %s", dbRole));
+    }
+    dbAdminClient
+        .updateDatabaseDdl(instanceId, database.getId().getDatabase(), dbRolesDropStatements, null)
+        .get();
+
+    // List roles from Db. Deleted roles should not be present in list.
+    Page<DatabaseRole> pageRemainingRoles =
+        dbAdminClient.listDatabaseRoles(instanceId, database.getId().getDatabase());
+    List<String> dbRolesRemaining = new ArrayList<>();
+    while (pageRemainingRoles != null && pageRemainingRoles.getValues().iterator().hasNext()) {
+      for (DatabaseRole value : pageRemainingRoles.getValues()) {
+        String[] split = value.getName().split("/");
+        dbRolesRemaining.add(split[split.length - 1]);
+      }
+      pageRemainingRoles = pageRemainingRoles.getNextPage();
+    }
+    assertThat(dbRolesRemaining).containsNoneIn(dbRoles);
   }
 }

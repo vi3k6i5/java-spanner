@@ -19,6 +19,7 @@ package com.google.cloud.spanner.admin.database.v1.stub;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListBackupOperationsPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListBackupsPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabaseOperationsPagedResponse;
+import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabaseRolesPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabasesPagedResponse;
 
 import com.google.api.gax.core.BackgroundResource;
@@ -38,6 +39,8 @@ import com.google.longrunning.Operation;
 import com.google.longrunning.stub.GrpcOperationsStub;
 import com.google.protobuf.Empty;
 import com.google.spanner.admin.database.v1.Backup;
+import com.google.spanner.admin.database.v1.CopyBackupMetadata;
+import com.google.spanner.admin.database.v1.CopyBackupRequest;
 import com.google.spanner.admin.database.v1.CreateBackupMetadata;
 import com.google.spanner.admin.database.v1.CreateBackupRequest;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
@@ -55,6 +58,8 @@ import com.google.spanner.admin.database.v1.ListBackupsRequest;
 import com.google.spanner.admin.database.v1.ListBackupsResponse;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsRequest;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsResponse;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesRequest;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesResponse;
 import com.google.spanner.admin.database.v1.ListDatabasesRequest;
 import com.google.spanner.admin.database.v1.ListDatabasesResponse;
 import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
@@ -171,6 +176,14 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setResponseMarshaller(ProtoUtils.marshaller(Operation.getDefaultInstance()))
               .build();
 
+  private static final MethodDescriptor<CopyBackupRequest, Operation> copyBackupMethodDescriptor =
+      MethodDescriptor.<CopyBackupRequest, Operation>newBuilder()
+          .setType(MethodDescriptor.MethodType.UNARY)
+          .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/CopyBackup")
+          .setRequestMarshaller(ProtoUtils.marshaller(CopyBackupRequest.getDefaultInstance()))
+          .setResponseMarshaller(ProtoUtils.marshaller(Operation.getDefaultInstance()))
+          .build();
+
   private static final MethodDescriptor<GetBackupRequest, Backup> getBackupMethodDescriptor =
       MethodDescriptor.<GetBackupRequest, Backup>newBuilder()
           .setType(MethodDescriptor.MethodType.UNARY)
@@ -241,6 +254,17 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   ProtoUtils.marshaller(ListBackupOperationsResponse.getDefaultInstance()))
               .build();
 
+  private static final MethodDescriptor<ListDatabaseRolesRequest, ListDatabaseRolesResponse>
+      listDatabaseRolesMethodDescriptor =
+          MethodDescriptor.<ListDatabaseRolesRequest, ListDatabaseRolesResponse>newBuilder()
+              .setType(MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/ListDatabaseRoles")
+              .setRequestMarshaller(
+                  ProtoUtils.marshaller(ListDatabaseRolesRequest.getDefaultInstance()))
+              .setResponseMarshaller(
+                  ProtoUtils.marshaller(ListDatabaseRolesResponse.getDefaultInstance()))
+              .build();
+
   private final UnaryCallable<ListDatabasesRequest, ListDatabasesResponse> listDatabasesCallable;
   private final UnaryCallable<ListDatabasesRequest, ListDatabasesPagedResponse>
       listDatabasesPagedCallable;
@@ -260,6 +284,9 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
   private final UnaryCallable<CreateBackupRequest, Operation> createBackupCallable;
   private final OperationCallable<CreateBackupRequest, Backup, CreateBackupMetadata>
       createBackupOperationCallable;
+  private final UnaryCallable<CopyBackupRequest, Operation> copyBackupCallable;
+  private final OperationCallable<CopyBackupRequest, Backup, CopyBackupMetadata>
+      copyBackupOperationCallable;
   private final UnaryCallable<GetBackupRequest, Backup> getBackupCallable;
   private final UnaryCallable<UpdateBackupRequest, Backup> updateBackupCallable;
   private final UnaryCallable<DeleteBackupRequest, Empty> deleteBackupCallable;
@@ -277,6 +304,10 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
       listBackupOperationsCallable;
   private final UnaryCallable<ListBackupOperationsRequest, ListBackupOperationsPagedResponse>
       listBackupOperationsPagedCallable;
+  private final UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesResponse>
+      listDatabaseRolesCallable;
+  private final UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesPagedResponse>
+      listDatabaseRolesPagedCallable;
 
   private final BackgroundResource backgroundResources;
   private final GrpcOperationsStub operationsStub;
@@ -422,6 +453,16 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   return params.build();
                 })
             .build();
+    GrpcCallSettings<CopyBackupRequest, Operation> copyBackupTransportSettings =
+        GrpcCallSettings.<CopyBackupRequest, Operation>newBuilder()
+            .setMethodDescriptor(copyBackupMethodDescriptor)
+            .setParamsExtractor(
+                request -> {
+                  ImmutableMap.Builder<String, String> params = ImmutableMap.builder();
+                  params.put("parent", String.valueOf(request.getParent()));
+                  return params.build();
+                })
+            .build();
     GrpcCallSettings<GetBackupRequest, Backup> getBackupTransportSettings =
         GrpcCallSettings.<GetBackupRequest, Backup>newBuilder()
             .setMethodDescriptor(getBackupMethodDescriptor)
@@ -495,6 +536,17 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                       return params.build();
                     })
                 .build();
+    GrpcCallSettings<ListDatabaseRolesRequest, ListDatabaseRolesResponse>
+        listDatabaseRolesTransportSettings =
+            GrpcCallSettings.<ListDatabaseRolesRequest, ListDatabaseRolesResponse>newBuilder()
+                .setMethodDescriptor(listDatabaseRolesMethodDescriptor)
+                .setParamsExtractor(
+                    request -> {
+                      ImmutableMap.Builder<String, String> params = ImmutableMap.builder();
+                      params.put("parent", String.valueOf(request.getParent()));
+                      return params.build();
+                    })
+                .build();
 
     this.listDatabasesCallable =
         callableFactory.createUnaryCallable(
@@ -551,6 +603,15 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
             settings.createBackupOperationSettings(),
             clientContext,
             operationsStub);
+    this.copyBackupCallable =
+        callableFactory.createUnaryCallable(
+            copyBackupTransportSettings, settings.copyBackupSettings(), clientContext);
+    this.copyBackupOperationCallable =
+        callableFactory.createOperationCallable(
+            copyBackupTransportSettings,
+            settings.copyBackupOperationSettings(),
+            clientContext,
+            operationsStub);
     this.getBackupCallable =
         callableFactory.createUnaryCallable(
             getBackupTransportSettings, settings.getBackupSettings(), clientContext);
@@ -594,6 +655,16 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
         callableFactory.createPagedCallable(
             listBackupOperationsTransportSettings,
             settings.listBackupOperationsSettings(),
+            clientContext);
+    this.listDatabaseRolesCallable =
+        callableFactory.createUnaryCallable(
+            listDatabaseRolesTransportSettings,
+            settings.listDatabaseRolesSettings(),
+            clientContext);
+    this.listDatabaseRolesPagedCallable =
+        callableFactory.createPagedCallable(
+            listDatabaseRolesTransportSettings,
+            settings.listDatabaseRolesSettings(),
             clientContext);
 
     this.backgroundResources =
@@ -680,6 +751,17 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
   }
 
   @Override
+  public UnaryCallable<CopyBackupRequest, Operation> copyBackupCallable() {
+    return copyBackupCallable;
+  }
+
+  @Override
+  public OperationCallable<CopyBackupRequest, Backup, CopyBackupMetadata>
+      copyBackupOperationCallable() {
+    return copyBackupOperationCallable;
+  }
+
+  @Override
   public UnaryCallable<GetBackupRequest, Backup> getBackupCallable() {
     return getBackupCallable;
   }
@@ -737,6 +819,18 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
   public UnaryCallable<ListBackupOperationsRequest, ListBackupOperationsPagedResponse>
       listBackupOperationsPagedCallable() {
     return listBackupOperationsPagedCallable;
+  }
+
+  @Override
+  public UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesResponse>
+      listDatabaseRolesCallable() {
+    return listDatabaseRolesCallable;
+  }
+
+  @Override
+  public UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesPagedResponse>
+      listDatabaseRolesPagedCallable() {
+    return listDatabaseRolesPagedCallable;
   }
 
   @Override

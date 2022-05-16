@@ -22,6 +22,7 @@ import com.google.api.gax.longrunning.OperationFuture;
 import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.gax.rpc.ServerStream;
 import com.google.cloud.ServiceRpc;
+import com.google.cloud.spanner.BackupId;
 import com.google.cloud.spanner.Restore;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.admin.database.v1.stub.DatabaseAdminStub;
@@ -32,31 +33,12 @@ import com.google.iam.v1.TestIamPermissionsResponse;
 import com.google.longrunning.Operation;
 import com.google.protobuf.Empty;
 import com.google.protobuf.FieldMask;
-import com.google.spanner.admin.database.v1.Backup;
-import com.google.spanner.admin.database.v1.CreateBackupMetadata;
-import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
-import com.google.spanner.admin.database.v1.Database;
-import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
-import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
+import com.google.spanner.admin.database.v1.*;
 import com.google.spanner.admin.instance.v1.CreateInstanceMetadata;
 import com.google.spanner.admin.instance.v1.Instance;
 import com.google.spanner.admin.instance.v1.InstanceConfig;
 import com.google.spanner.admin.instance.v1.UpdateInstanceMetadata;
-import com.google.spanner.v1.BeginTransactionRequest;
-import com.google.spanner.v1.CommitRequest;
-import com.google.spanner.v1.CommitResponse;
-import com.google.spanner.v1.ExecuteBatchDmlRequest;
-import com.google.spanner.v1.ExecuteBatchDmlResponse;
-import com.google.spanner.v1.ExecuteSqlRequest;
-import com.google.spanner.v1.PartialResultSet;
-import com.google.spanner.v1.PartitionQueryRequest;
-import com.google.spanner.v1.PartitionReadRequest;
-import com.google.spanner.v1.PartitionResponse;
-import com.google.spanner.v1.ReadRequest;
-import com.google.spanner.v1.ResultSet;
-import com.google.spanner.v1.RollbackRequest;
-import com.google.spanner.v1.Session;
-import com.google.spanner.v1.Transaction;
+import com.google.spanner.v1.*;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -231,6 +213,20 @@ public interface SpannerRpc extends ServiceRpc {
       com.google.cloud.spanner.Backup backupInfo) throws SpannerException;
 
   /**
+   * Creates a copy backup from the source backup specified.
+   *
+   * @param destinationBackup the backup to create. The instance, database, and expireTime fields of
+   *     the backup must be filled. It may also optionally have an encryption config set. If no
+   *     encryption config has been set, the new backup will use the same encryption config as the
+   *     source backup.
+   * @return the operation that monitors the backup creation.
+   */
+  default OperationFuture<Backup, CopyBackupMetadata> copyBackup(
+      BackupId sourceBackupId, com.google.cloud.spanner.Backup destinationBackup) {
+    throw new UnsupportedOperationException("Unimplemented");
+  }
+
+  /**
    * Restore a backup into the given database.
    *
    * @param restore a {@link Restore} instance with the backup source and destination database
@@ -257,6 +253,9 @@ public interface SpannerRpc extends ServiceRpc {
   Paginated<Operation> listDatabaseOperations(
       String instanceName, int pageSize, @Nullable String filter, @Nullable String pageToken);
 
+  Paginated<DatabaseRole> listDatabaseRoles(
+      String databaseName, int pageSize, @Nullable String pageToken);
+
   /** Retrieves a long running operation. */
   Operation getOperation(String name) throws SpannerException;
 
@@ -266,12 +265,16 @@ public interface SpannerRpc extends ServiceRpc {
   List<Session> batchCreateSessions(
       String databaseName,
       int sessionCount,
+      @Nullable String creatorRole,
       @Nullable Map<String, String> labels,
       @Nullable Map<Option, ?> options)
       throws SpannerException;
 
   Session createSession(
-      String databaseName, @Nullable Map<String, String> labels, @Nullable Map<Option, ?> options)
+      String databaseName,
+      @Nullable String creatorRole,
+      @Nullable Map<String, String> labels,
+      @Nullable Map<Option, ?> options)
       throws SpannerException;
 
   void deleteSession(String sessionName, @Nullable Map<Option, ?> options) throws SpannerException;

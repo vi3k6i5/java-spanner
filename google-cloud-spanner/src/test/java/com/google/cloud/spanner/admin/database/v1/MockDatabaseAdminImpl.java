@@ -26,6 +26,7 @@ import com.google.longrunning.Operation;
 import com.google.protobuf.AbstractMessage;
 import com.google.protobuf.Empty;
 import com.google.spanner.admin.database.v1.Backup;
+import com.google.spanner.admin.database.v1.CopyBackupRequest;
 import com.google.spanner.admin.database.v1.CreateBackupRequest;
 import com.google.spanner.admin.database.v1.CreateDatabaseRequest;
 import com.google.spanner.admin.database.v1.Database;
@@ -42,6 +43,8 @@ import com.google.spanner.admin.database.v1.ListBackupsRequest;
 import com.google.spanner.admin.database.v1.ListBackupsResponse;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsRequest;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsResponse;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesRequest;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesResponse;
 import com.google.spanner.admin.database.v1.ListDatabasesRequest;
 import com.google.spanner.admin.database.v1.ListDatabasesResponse;
 import com.google.spanner.admin.database.v1.RestoreDatabaseRequest;
@@ -294,6 +297,26 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
   }
 
   @Override
+  public void copyBackup(CopyBackupRequest request, StreamObserver<Operation> responseObserver) {
+    Object response = responses.poll();
+    if (response instanceof Operation) {
+      requests.add(request);
+      responseObserver.onNext(((Operation) response));
+      responseObserver.onCompleted();
+    } else if (response instanceof Exception) {
+      responseObserver.onError(((Exception) response));
+    } else {
+      responseObserver.onError(
+          new IllegalArgumentException(
+              String.format(
+                  "Unrecognized response type %s for method CopyBackup, expected %s or %s",
+                  response == null ? "null" : response.getClass().getName(),
+                  Operation.class.getName(),
+                  Exception.class.getName())));
+    }
+  }
+
+  @Override
   public void getBackup(GetBackupRequest request, StreamObserver<Backup> responseObserver) {
     Object response = responses.poll();
     if (response instanceof Backup) {
@@ -435,6 +458,28 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
                   "Unrecognized response type %s for method ListBackupOperations, expected %s or %s",
                   response == null ? "null" : response.getClass().getName(),
                   ListBackupOperationsResponse.class.getName(),
+                  Exception.class.getName())));
+    }
+  }
+
+  @Override
+  public void listDatabaseRoles(
+      ListDatabaseRolesRequest request,
+      StreamObserver<ListDatabaseRolesResponse> responseObserver) {
+    Object response = responses.poll();
+    if (response instanceof ListDatabaseRolesResponse) {
+      requests.add(request);
+      responseObserver.onNext(((ListDatabaseRolesResponse) response));
+      responseObserver.onCompleted();
+    } else if (response instanceof Exception) {
+      responseObserver.onError(((Exception) response));
+    } else {
+      responseObserver.onError(
+          new IllegalArgumentException(
+              String.format(
+                  "Unrecognized response type %s for method ListDatabaseRoles, expected %s or %s",
+                  response == null ? "null" : response.getClass().getName(),
+                  ListDatabaseRolesResponse.class.getName(),
                   Exception.class.getName())));
     }
   }

@@ -19,6 +19,7 @@ package com.google.cloud.spanner.admin.database.v1.stub;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListBackupOperationsPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListBackupsPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabaseOperationsPagedResponse;
+import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabaseRolesPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabasesPagedResponse;
 
 import com.google.api.gax.core.BackgroundResource;
@@ -33,6 +34,8 @@ import com.google.longrunning.Operation;
 import com.google.longrunning.stub.OperationsStub;
 import com.google.protobuf.Empty;
 import com.google.spanner.admin.database.v1.Backup;
+import com.google.spanner.admin.database.v1.CopyBackupMetadata;
+import com.google.spanner.admin.database.v1.CopyBackupRequest;
 import com.google.spanner.admin.database.v1.CreateBackupMetadata;
 import com.google.spanner.admin.database.v1.CreateBackupRequest;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
@@ -50,6 +53,8 @@ import com.google.spanner.admin.database.v1.ListBackupsRequest;
 import com.google.spanner.admin.database.v1.ListBackupsResponse;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsRequest;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsResponse;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesRequest;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesResponse;
 import com.google.spanner.admin.database.v1.ListDatabasesRequest;
 import com.google.spanner.admin.database.v1.ListDatabasesResponse;
 import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
@@ -134,6 +139,15 @@ public abstract class DatabaseAdminStub implements BackgroundResource {
     throw new UnsupportedOperationException("Not implemented: createBackupCallable()");
   }
 
+  public OperationCallable<CopyBackupRequest, Backup, CopyBackupMetadata>
+      copyBackupOperationCallable() {
+    throw new UnsupportedOperationException("Not implemented: copyBackupOperationCallable()");
+  }
+
+  public UnaryCallable<CopyBackupRequest, Operation> copyBackupCallable() {
+    throw new UnsupportedOperationException("Not implemented: copyBackupCallable()");
+  }
+
   public UnaryCallable<GetBackupRequest, Backup> getBackupCallable() {
     throw new UnsupportedOperationException("Not implemented: getBackupCallable()");
   }
@@ -182,6 +196,16 @@ public abstract class DatabaseAdminStub implements BackgroundResource {
   public UnaryCallable<ListBackupOperationsRequest, ListBackupOperationsResponse>
       listBackupOperationsCallable() {
     throw new UnsupportedOperationException("Not implemented: listBackupOperationsCallable()");
+  }
+
+  public UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesPagedResponse>
+      listDatabaseRolesPagedCallable() {
+    throw new UnsupportedOperationException("Not implemented: listDatabaseRolesPagedCallable()");
+  }
+
+  public UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesResponse>
+      listDatabaseRolesCallable() {
+    throw new UnsupportedOperationException("Not implemented: listDatabaseRolesCallable()");
   }
 
   @Override

@@ -17,6 +17,7 @@
 package com.google.cloud.spanner;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.spanner.admin.database.v1.DatabaseDialect.GOOGLE_STANDARD_SQL;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,12 +44,16 @@ import com.google.protobuf.Empty;
 import com.google.protobuf.FieldMask;
 import com.google.protobuf.Message;
 import com.google.spanner.admin.database.v1.Backup;
+import com.google.spanner.admin.database.v1.CopyBackupMetadata;
 import com.google.spanner.admin.database.v1.CreateBackupMetadata;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
 import com.google.spanner.admin.database.v1.Database;
+import com.google.spanner.admin.database.v1.DatabaseDialect;
+import com.google.spanner.admin.database.v1.DatabaseRole;
 import com.google.spanner.admin.database.v1.EncryptionInfo;
 import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -69,7 +74,10 @@ public class DatabaseAdminClientImplTest {
   private static final String DB_NAME = "projects/my-project/instances/my-instance/databases/my-db";
   private static final String DB_NAME2 =
       "projects/my-project/instances/my-instance/databases/my-db2";
+  private static final String DB_ROLE = "dummy-role";
+  private static final String DB_ROLE2 = "dummy-role-2";
   private static final String BK_ID = "my-bk";
+  private static final String SOURCE_BK = "my-source-bk";
   private static final String BK_NAME = "projects/my-project/instances/my-instance/backups/my-bk";
   private static final String BK_NAME2 = "projects/my-project/instances/my-instance/backups/my-bk2";
   private static final Timestamp EARLIEST_VERSION_TIME = Timestamp.now();
@@ -77,6 +85,7 @@ public class DatabaseAdminClientImplTest {
   private static final String KMS_KEY_NAME =
       "projects/my-project/locations/some-location/keyRings/my-keyring/cryptoKeys/my-key";
   private static final String KMS_KEY_VERSION = "1";
+  private static final DatabaseDialect DIALECT = GOOGLE_STANDARD_SQL;
 
   @Mock SpannerRpc rpc;
   DatabaseAdminClientImpl client;
@@ -93,7 +102,16 @@ public class DatabaseAdminClientImplTest {
         .setState(Database.State.READY)
         .setEarliestVersionTime(EARLIEST_VERSION_TIME.toProto())
         .setVersionRetentionPeriod(VERSION_RETENTION_PERIOD)
+        .setDatabaseDialect(DIALECT)
         .build();
+  }
+
+  private DatabaseRole getDatabaseRoleProto() {
+    return DatabaseRole.newBuilder().setName(DB_ROLE).build();
+  }
+
+  private DatabaseRole getAnotherDatabaseRoleProto() {
+    return DatabaseRole.newBuilder().setName(DB_ROLE2).build();
   }
 
   private Database getEncryptedDatabaseProto() {
@@ -161,8 +179,11 @@ public class DatabaseAdminClientImplTest {
             INSTANCE_NAME,
             "CREATE DATABASE `" + DB_ID + "`",
             Collections.emptyList(),
-            new com.google.cloud.spanner.Database(
-                DatabaseId.of(DB_NAME), State.UNSPECIFIED, client)))
+            client
+                .newDatabaseBuilder(DatabaseId.of(DB_NAME))
+                .setState(State.UNSPECIFIED)
+                .setDialect(Dialect.GOOGLE_STANDARD_SQL)
+                .build()))
         .thenReturn(rawOperationFuture);
     OperationFuture<com.google.cloud.spanner.Database, CreateDatabaseMetadata> op =
         client.createDatabase(INSTANCE_ID, DB_ID, Collections.emptyList());
@@ -176,6 +197,7 @@ public class DatabaseAdminClientImplTest {
         client
             .newDatabaseBuilder(DatabaseId.of(DB_NAME))
             .setEncryptionConfig(EncryptionConfigs.customerManagedEncryption(KMS_KEY_NAME))
+            .setDialect(Dialect.GOOGLE_STANDARD_SQL)
             .build();
 
     OperationFuture<Database, CreateDatabaseMetadata> rawOperationFuture =
@@ -278,6 +300,57 @@ public class DatabaseAdminClientImplTest {
             () ->
                 Lists.newArrayList(
                     client.listDatabases(INSTANCE_ID, Options.pageSize(1)).iterateAll()));
+    assertThat(e.getMessage()).contains(INSTANCE_NAME);
+    // Assert that the call was done without a page token.
+    assertThat(e.getMessage()).contains(String.format("with pageToken %s", pageToken));
+  }
+
+  @Test
+  public void listDatabaseRoles() {
+    String pageToken = "token";
+    when(rpc.listDatabaseRoles(DB_NAME, 1, null))
+        .thenReturn(new Paginated<>(ImmutableList.of(getDatabaseRoleProto()), pageToken));
+    when(rpc.listDatabaseRoles(DB_NAME, 1, pageToken))
+        .thenReturn(new Paginated<>(ImmutableList.of(getAnotherDatabaseRoleProto()), ""));
+
+    ArrayList<com.google.cloud.spanner.DatabaseRole> databaseRoles =
+        Lists.newArrayList(
+            client.listDatabaseRoles(INSTANCE_ID, DB_ID, Options.pageSize(1)).iterateAll());
+    assertThat(databaseRoles.get(0).getName()).isEqualTo(DB_ROLE);
+    assertThat(databaseRoles.get(1).getName()).isEqualTo(DB_ROLE2);
+    assertThat(databaseRoles.size()).isEqualTo(2);
+  }
+
+  @Test
+  public void listDatabaseRolesError() {
+    when(rpc.listDatabaseRoles(DB_NAME, 1, null))
+        .thenThrow(
+            SpannerExceptionFactory.newSpannerException(ErrorCode.INVALID_ARGUMENT, "Test error"));
+    SpannerException e =
+        assertThrows(
+            SpannerException.class,
+            () -> client.listDatabaseRoles(INSTANCE_ID, DB_ID, Options.pageSize(1)));
+    assertThat(e.getMessage()).contains(INSTANCE_NAME);
+    // Assert that the call was done without a page token.
+    assertThat(e.getMessage()).contains("with pageToken <null>");
+  }
+
+  @Test
+  public void listDatabaseRolesErrorWithToken() {
+    String pageToken = "token";
+    when(rpc.listDatabaseRoles(DB_NAME, 1, null))
+        .thenReturn(new Paginated<>(ImmutableList.of(getDatabaseRoleProto()), pageToken));
+    when(rpc.listDatabaseRoles(DB_NAME, 1, pageToken))
+        .thenThrow(
+            SpannerExceptionFactory.newSpannerException(ErrorCode.INVALID_ARGUMENT, "Test error"));
+    SpannerException e =
+        assertThrows(
+            SpannerException.class,
+            () ->
+                Lists.newArrayList(
+                    client
+                        .listDatabaseRoles(INSTANCE_ID, DB_ID, Options.pageSize(1))
+                        .iterateAll()));
     assertThat(e.getMessage()).contains(INSTANCE_NAME);
     // Assert that the call was done without a page token.
     assertThat(e.getMessage()).contains(String.format("with pageToken %s", pageToken));
@@ -441,6 +514,81 @@ public class DatabaseAdminClientImplTest {
     when(rpc.createBackup(backup)).thenReturn(rawOperationFuture);
     final OperationFuture<com.google.cloud.spanner.Backup, CreateBackupMetadata> op =
         client.createBackup(backup);
+    assertThat(op.isDone()).isTrue();
+    assertThat(op.get().getId().getName()).isEqualTo(BK_NAME);
+    assertThat(op.get().getEncryptionInfo().getKmsKeyVersion()).isEqualTo(KMS_KEY_VERSION);
+  }
+
+  @Test
+  public void copyBackupWithParams() throws Exception {
+    OperationFuture<Backup, CopyBackupMetadata> rawOperationFuture =
+        OperationFutureUtil.immediateOperationFuture(
+            "copyBackup", getBackupProto(), CopyBackupMetadata.getDefaultInstance());
+    Timestamp t =
+        Timestamp.ofTimeMicroseconds(
+            TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis())
+                + TimeUnit.HOURS.toMicros(28));
+    final com.google.cloud.spanner.Backup backup =
+        client
+            .newBackupBuilder(BackupId.of(PROJECT_ID, INSTANCE_ID, BK_ID))
+            .setExpireTime(t)
+            .build();
+    when(rpc.copyBackup(BackupId.of(PROJECT_ID, INSTANCE_ID, SOURCE_BK), backup))
+        .thenReturn(rawOperationFuture);
+    OperationFuture<com.google.cloud.spanner.Backup, CopyBackupMetadata> op =
+        client.copyBackup(INSTANCE_ID, SOURCE_BK, BK_ID, t);
+    assertThat(op.isDone()).isTrue();
+    assertThat(op.get().getId().getName()).isEqualTo(BK_NAME);
+  }
+
+  @Test
+  public void copyBackupWithBackupObject() throws ExecutionException, InterruptedException {
+    final OperationFuture<Backup, CopyBackupMetadata> rawOperationFuture =
+        OperationFutureUtil.immediateOperationFuture(
+            "copyBackup", getBackupProto(), CopyBackupMetadata.getDefaultInstance());
+    final Timestamp expireTime =
+        Timestamp.ofTimeMicroseconds(
+            TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis())
+                + TimeUnit.HOURS.toMicros(28));
+    final Timestamp versionTime =
+        Timestamp.ofTimeMicroseconds(
+            TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()) - TimeUnit.DAYS.toMicros(2));
+    final com.google.cloud.spanner.Backup requestBackup =
+        client
+            .newBackupBuilder(BackupId.of(PROJECT_ID, INSTANCE_ID, BK_ID))
+            .setExpireTime(expireTime)
+            .setVersionTime(versionTime)
+            .build();
+    BackupId sourceBackupId = BackupId.of(PROJECT_ID, INSTANCE_ID, BK_ID);
+
+    when(rpc.copyBackup(sourceBackupId, requestBackup)).thenReturn(rawOperationFuture);
+
+    final OperationFuture<com.google.cloud.spanner.Backup, CopyBackupMetadata> op =
+        client.copyBackup(sourceBackupId, requestBackup);
+    assertThat(op.isDone()).isTrue();
+    assertThat(op.get().getId().getName()).isEqualTo(BK_NAME);
+  }
+
+  @Test
+  public void copyEncryptedBackup() throws ExecutionException, InterruptedException {
+    final OperationFuture<Backup, CopyBackupMetadata> rawOperationFuture =
+        OperationFutureUtil.immediateOperationFuture(
+            "copyBackup", getEncryptedBackupProto(), CopyBackupMetadata.getDefaultInstance());
+    final Timestamp t =
+        Timestamp.ofTimeMicroseconds(
+            TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis())
+                + TimeUnit.HOURS.toMicros(28));
+    final com.google.cloud.spanner.Backup backup =
+        client
+            .newBackupBuilder(BackupId.of(PROJECT_ID, INSTANCE_ID, BK_ID))
+            .setDatabase(DatabaseId.of(PROJECT_ID, INSTANCE_ID, DB_ID))
+            .setExpireTime(t)
+            .setEncryptionConfig(EncryptionConfigs.customerManagedEncryption(KMS_KEY_NAME))
+            .build();
+    BackupId sourceBackupId = BackupId.of(PROJECT_ID, INSTANCE_ID, BK_ID);
+    when(rpc.copyBackup(sourceBackupId, backup)).thenReturn(rawOperationFuture);
+    final OperationFuture<com.google.cloud.spanner.Backup, CopyBackupMetadata> op =
+        client.copyBackup(sourceBackupId, backup);
     assertThat(op.isDone()).isTrue();
     assertThat(op.get().getId().getName()).isEqualTo(BK_NAME);
     assertThat(op.get().getEncryptionInfo().getKmsKeyVersion()).isEqualTo(KMS_KEY_VERSION);

@@ -19,8 +19,10 @@ package com.google.cloud.spanner;
 import static com.google.common.testing.SerializableTester.reserializeAndAssert;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -41,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -172,6 +175,28 @@ public class ValueTest {
     assertThat(v.isNull()).isFalse();
     assertThat(v.getNumeric()).isEqualTo(BigDecimal.valueOf(123, 2));
     assertThat(v.toString()).isEqualTo("1.23");
+  }
+
+  @Test
+  public void pgNumeric() {
+    final Value value = Value.pgNumeric("1234.5678");
+    assertEquals(Type.pgNumeric(), value.getType());
+    assertFalse("pgNumeric value should not be null", value.isNull());
+    assertEquals("1234.5678", value.getString());
+    assertEquals(BigDecimal.valueOf(12345678, 4), value.getNumeric());
+    assertEquals(1234.5678D, value.getFloat64(), 0.00001);
+    assertEquals("1234.5678", value.toString());
+  }
+
+  @Test
+  public void pgNumericNaN() {
+    final Value value = Value.pgNumeric("NaN");
+    assertEquals(Type.pgNumeric(), value.getType());
+    assertFalse("pgNumeric value should not be null", value.isNull());
+    assertEquals("NaN", value.getString());
+    assertThrows(NumberFormatException.class, value::getNumeric);
+    assertEquals(Double.NaN, value.getFloat64(), 0.00001);
+    assertEquals("NaN", value.toString());
   }
 
   @Test
@@ -332,6 +357,33 @@ public class ValueTest {
   }
 
   @Test
+  public void pgNumericNull() {
+    final Value value = Value.pgNumeric(null);
+    assertEquals(Type.pgNumeric(), value.getType());
+    assertTrue("pgNumeric value should be null", value.isNull());
+    assertEquals(NULL_STRING, value.toString());
+
+    final IllegalStateException e1 = assertThrows(IllegalStateException.class, value::getString);
+    assertTrue("exception should mention value is null", e1.getMessage().contains("null value"));
+    final IllegalStateException e2 = assertThrows(IllegalStateException.class, value::getNumeric);
+    assertTrue("exception should mention value is null", e2.getMessage().contains("null value"));
+    final IllegalStateException e3 = assertThrows(IllegalStateException.class, value::getFloat64);
+    assertTrue("exception should mention value is null", e3.getMessage().contains("null value"));
+  }
+
+  @Test
+  public void pgNumericInvalid() {
+    final Value value = Value.pgNumeric("INVALID");
+    assertEquals(Type.pgNumeric(), value.getType());
+    assertFalse("pgNumeric value should not be null", value.isNull());
+    assertEquals("INVALID", value.toString());
+
+    assertEquals("INVALID", value.getString());
+    assertThrows(NumberFormatException.class, value::getNumeric);
+    assertThrows(NumberFormatException.class, value::getFloat64);
+  }
+
+  @Test
   public void string() {
     Value v = Value.string("abc");
     assertThat(v.getType()).isEqualTo(Type.string());
@@ -366,6 +418,7 @@ public class ValueTest {
     assertEquals(Type.json(), v.getType());
     assertFalse(v.isNull());
     assertEquals(json, v.getJson());
+    assertEquals(json, v.getString());
   }
 
   @Test
@@ -374,12 +427,8 @@ public class ValueTest {
     assertEquals(Type.json(), v.getType());
     assertTrue(v.isNull());
     assertEquals(NULL_STRING, v.toString());
-    try {
-      v.getJson();
-      fail("Expected exception");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage().contains("null value"));
-    }
+    assertThrowsWithMessage(v::getJson, "null value");
+    assertThrowsWithMessage(v::getString, "null value");
   }
 
   @Test
@@ -683,6 +732,32 @@ public class ValueTest {
   }
 
   @Test
+  public void pgNumericArray() {
+    final Value value = Value.pgNumericArray(Arrays.asList("1.23", null, "1.24"));
+    assertFalse("pgNumericArray value should not be null", value.isNull());
+    assertEquals(Arrays.asList("1.23", null, "1.24"), value.getStringArray());
+    assertEquals(
+        Arrays.asList(new BigDecimal("1.23"), null, new BigDecimal("1.24")),
+        value.getNumericArray());
+    final List<Double> float64Array = value.getFloat64Array();
+    assertEquals(1.23D, float64Array.get(0), 0.001);
+    assertNull(float64Array.get(1));
+    assertEquals(1.24D, float64Array.get(2), 0.001);
+  }
+
+  @Test
+  public void pgNumericArrayWithNaNs() {
+    final Value value = Value.pgNumericArray(Arrays.asList("1.23", null, Value.NAN));
+    assertFalse("pgNumericArray value should not be null", value.isNull());
+    assertEquals(Arrays.asList("1.23", null, "NaN"), value.getStringArray());
+    assertThrows(NumberFormatException.class, value::getNumericArray);
+    final List<Double> float64Array = value.getFloat64Array();
+    assertEquals(1.23D, float64Array.get(0), 0.001);
+    assertNull(float64Array.get(1));
+    assertEquals(Double.NaN, float64Array.get(2), 0.001);
+  }
+
+  @Test
   public void numericArrayNull() {
     Value v = Value.numericArray(null);
     assertThat(v.isNull()).isTrue();
@@ -693,11 +768,38 @@ public class ValueTest {
   }
 
   @Test
+  public void pgNumericArrayNull() {
+    final Value value = Value.pgNumericArray(null);
+    assertTrue("pgNumericArray value should be null", value.isNull());
+    assertEquals(NULL_STRING, value.toString());
+
+    final IllegalStateException e1 =
+        assertThrows(IllegalStateException.class, value::getStringArray);
+    assertTrue("exception should mention value is null", e1.getMessage().contains("null value"));
+    final IllegalStateException e2 =
+        assertThrows(IllegalStateException.class, value::getNumericArray);
+    assertTrue("exception should mention value is null", e2.getMessage().contains("null value"));
+    final IllegalStateException e3 =
+        assertThrows(IllegalStateException.class, value::getFloat64Array);
+    assertTrue("exception should mention value is null", e3.getMessage().contains("null value"));
+  }
+
+  @Test
   public void numericArrayTryGetInt64Array() {
     Value value = Value.numericArray(Collections.singletonList(BigDecimal.valueOf(1, 1)));
 
     IllegalStateException e = assertThrows(IllegalStateException.class, value::getInt64Array);
     assertThat(e.getMessage()).contains("Expected: ARRAY<INT64> actual: ARRAY<NUMERIC>");
+  }
+
+  @Test
+  public void pgNumericArrayTryGetInt64Array() {
+    final Value value = Value.pgNumericArray(Collections.singletonList("1.23"));
+
+    final IllegalStateException e = assertThrows(IllegalStateException.class, value::getInt64Array);
+    assertTrue(
+        "exception should mention type expectation",
+        e.getMessage().contains("Expected: ARRAY<INT64> actual: ARRAY<NUMERIC<PG_NUMERIC>>"));
   }
 
   @Test
@@ -731,8 +833,9 @@ public class ValueTest {
     String three = "{\"color\":\"red\",\"value\":\"#f00\"}";
     Value v = Value.jsonArray(Arrays.asList(one, two, three));
     assertFalse(v.isNull());
-    assertThat(v.getJsonArray()).containsExactly(one, two, three).inOrder();
+    assertArrayEquals(new String[] {one, two, three}, v.getJsonArray().toArray());
     assertEquals("[{},NULL,{\"color\":\"red\",\"value\":\"#f00\"}]", v.toString());
+    assertArrayEquals(new String[] {one, two, three}, v.getStringArray().toArray());
   }
 
   @Test
@@ -740,12 +843,8 @@ public class ValueTest {
     Value v = Value.jsonArray(null);
     assertTrue(v.isNull());
     assertEquals(NULL_STRING, v.toString());
-    try {
-      v.getJsonArray();
-      fail("Expected exception");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage().contains("null value"));
-    }
+    assertThrowsWithMessage(v::getJsonArray, "null value");
+    assertThrowsWithMessage(v::getStringArray, "null value");
   }
 
   @Test
@@ -760,14 +859,9 @@ public class ValueTest {
   }
 
   @Test
-  public void jsonArrayTryGetStringArray() {
-    Value value = Value.jsonArray(Arrays.asList("{}"));
-    try {
-      value.getStringArray();
-      fail("Expected exception");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage().contains("Expected: ARRAY<STRING> actual: ARRAY<JSON>"));
-    }
+  public void jsonArrayTryGetFloat64Array() {
+    Value value = Value.jsonArray(Collections.singletonList("{}"));
+    assertThrowsWithMessage(value::getFloat64Array, "Expected: ARRAY<FLOAT64> actual: ARRAY<JSON>");
   }
 
   @Test
@@ -1047,6 +1141,13 @@ public class ValueTest {
         Value.numeric(null).toProto());
 
     assertEquals(
+        com.google.protobuf.Value.newBuilder().setStringValue("1234.5678").build(),
+        Value.pgNumeric("1234.5678").toProto());
+    assertEquals(
+        com.google.protobuf.Value.newBuilder().setNullValue(NullValue.NULL_VALUE).build(),
+        Value.pgNumeric(null).toProto());
+
+    assertEquals(
         com.google.protobuf.Value.newBuilder().setStringValue("2010-02-28").build(),
         Value.date(Date.fromYearMonthDay(2010, 2, 28)).toProto());
     assertEquals(
@@ -1150,6 +1251,19 @@ public class ValueTest {
                                 .build())))
             .build(),
         Value.numericArray(Arrays.asList(new BigDecimal("3.14"), null)).toProto());
+    assertEquals(
+        com.google.protobuf.Value.newBuilder()
+            .setListValue(
+                ListValue.newBuilder()
+                    .addAllValues(
+                        Arrays.asList(
+                            com.google.protobuf.Value.newBuilder().setStringValue("1.23").build(),
+                            com.google.protobuf.Value.newBuilder()
+                                .setNullValue(NullValue.NULL_VALUE)
+                                .build(),
+                            com.google.protobuf.Value.newBuilder().setStringValue("NaN").build())))
+            .build(),
+        Value.pgNumericArray(Arrays.asList("1.23", null, Value.NAN)).toProto());
     assertEquals(
         com.google.protobuf.Value.newBuilder()
             .setListValue(
@@ -1380,6 +1494,45 @@ public class ValueTest {
                                 Timestamp.parseTimestamp("2012-04-10T15:16:17.123456789Z"), null)))
                     .build())
             .toProto());
+    // Struct with pgNumeric
+    assertEquals(
+        com.google.protobuf.Value.newBuilder()
+            .setListValue(
+                ListValue.newBuilder()
+                    .addValues(
+                        com.google.protobuf.Value.newBuilder().setStringValue("1.23").build())
+                    .build())
+            .build(),
+        Value.struct(Struct.newBuilder().set("x").to(Value.pgNumeric("1.23")).build()).toProto());
+    // Struct with pgNumeric Array
+    assertEquals(
+        com.google.protobuf.Value.newBuilder()
+            .setListValue(
+                ListValue.newBuilder()
+                    .addValues(
+                        com.google.protobuf.Value.newBuilder()
+                            .setListValue(
+                                ListValue.newBuilder()
+                                    .addAllValues(
+                                        Arrays.asList(
+                                            com.google.protobuf.Value.newBuilder()
+                                                .setNullValue(NullValue.NULL_VALUE)
+                                                .build(),
+                                            com.google.protobuf.Value.newBuilder()
+                                                .setStringValue("1.23")
+                                                .build(),
+                                            com.google.protobuf.Value.newBuilder()
+                                                .setStringValue("NaN")
+                                                .build()))
+                                    .build())
+                            .build())
+                    .build())
+            .build(),
+        Value.struct(
+                Struct.newBuilder()
+                    .add(Value.pgNumericArray(Arrays.asList(null, "1.23", "NaN")))
+                    .build())
+            .toProto());
   }
 
   @Test
@@ -1404,6 +1557,11 @@ public class ValueTest {
         Value.numeric(BigDecimal.valueOf(123, 2)), Value.numeric(new BigDecimal("1.23")));
     tester.addEqualityGroup(Value.numeric(BigDecimal.valueOf(456, 2)));
     tester.addEqualityGroup(Value.numeric(null));
+
+    tester.addEqualityGroup(Value.pgNumeric("1234.5678"), Value.pgNumeric("1234.5678"));
+    tester.addEqualityGroup(Value.pgNumeric("NaN"), Value.pgNumeric(Value.NAN));
+    tester.addEqualityGroup(Value.pgNumeric("8765.4321"));
+    tester.addEqualityGroup(Value.pgNumeric(null));
 
     tester.addEqualityGroup(Value.string("abc"), Value.string("abc"));
     tester.addEqualityGroup(Value.string("def"));
@@ -1472,6 +1630,12 @@ public class ValueTest {
     tester.addEqualityGroup(Value.numericArray(null));
 
     tester.addEqualityGroup(
+        Value.pgNumericArray(Arrays.asList("1.23", null, Value.NAN)),
+        Value.pgNumericArray(Arrays.asList("1.23", null, "NaN")));
+    tester.addEqualityGroup(Value.pgNumericArray(Collections.singletonList("1.25")));
+    tester.addEqualityGroup(Value.pgNumericArray(null), Value.pgNumericArray(null));
+
+    tester.addEqualityGroup(
         Value.stringArray(Arrays.asList("a", "b")), Value.stringArray(Arrays.asList("a", "b")));
     tester.addEqualityGroup(Value.stringArray(Collections.singletonList("c")));
     tester.addEqualityGroup(Value.stringArray(null));
@@ -1529,6 +1693,10 @@ public class ValueTest {
     reserializeAndAssert(Value.numeric(BigDecimal.valueOf(123, 2)));
     reserializeAndAssert(Value.numeric(null));
 
+    reserializeAndAssert(Value.pgNumeric("1.23"));
+    reserializeAndAssert(Value.pgNumeric(Value.NAN));
+    reserializeAndAssert(Value.pgNumeric(null));
+
     reserializeAndAssert(Value.string("abc"));
     reserializeAndAssert(Value.string(null));
 
@@ -1568,6 +1736,11 @@ public class ValueTest {
             BrokenSerializationList.of(
                 BigDecimal.valueOf(1, 1), BigDecimal.valueOf(2, 1), BigDecimal.valueOf(3, 1))));
     reserializeAndAssert(Value.numericArray(null));
+
+    reserializeAndAssert(Value.pgNumericArray(Arrays.asList("1.23", null, Value.NAN)));
+    reserializeAndAssert(
+        Value.pgNumericArray(BrokenSerializationList.of("1.23", "1.24", Value.NAN)));
+    reserializeAndAssert(Value.pgNumericArray(null));
 
     reserializeAndAssert(Value.timestamp(null));
     reserializeAndAssert(Value.timestamp(Value.COMMIT_TIMESTAMP));
@@ -1626,6 +1799,21 @@ public class ValueTest {
 
     private void writeObject(@SuppressWarnings("unused") java.io.ObjectOutputStream unusedStream) {
       throw new IllegalStateException("Serialization disabled");
+    }
+  }
+
+  private void assertThrowsWithMessage(Supplier<?> supplier, String message) {
+    try {
+      supplier.get();
+      fail("Expected exception");
+    } catch (Exception e) {
+      assertTrue(
+          "Expected exception message to contain: \""
+              + message
+              + "\", actual: \""
+              + e.getMessage()
+              + "\"",
+          e.getMessage().contains(message));
     }
   }
 }

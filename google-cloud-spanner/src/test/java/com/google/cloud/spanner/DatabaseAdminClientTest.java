@@ -70,6 +70,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.threeten.bp.Duration;
 
+/** Unit tests for {@link com.google.cloud.spanner.DatabaseAdminClient}. */
 @RunWith(JUnit4.class)
 public class DatabaseAdminClientTest {
   private static final String PROJECT_ID = "my-project";

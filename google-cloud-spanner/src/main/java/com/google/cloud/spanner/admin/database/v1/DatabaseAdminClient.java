@@ -40,14 +40,18 @@ import com.google.longrunning.Operation;
 import com.google.longrunning.OperationsClient;
 import com.google.protobuf.Empty;
 import com.google.protobuf.FieldMask;
+import com.google.protobuf.Timestamp;
 import com.google.spanner.admin.database.v1.Backup;
 import com.google.spanner.admin.database.v1.BackupName;
+import com.google.spanner.admin.database.v1.CopyBackupMetadata;
+import com.google.spanner.admin.database.v1.CopyBackupRequest;
 import com.google.spanner.admin.database.v1.CreateBackupMetadata;
 import com.google.spanner.admin.database.v1.CreateBackupRequest;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
 import com.google.spanner.admin.database.v1.CreateDatabaseRequest;
 import com.google.spanner.admin.database.v1.Database;
 import com.google.spanner.admin.database.v1.DatabaseName;
+import com.google.spanner.admin.database.v1.DatabaseRole;
 import com.google.spanner.admin.database.v1.DeleteBackupRequest;
 import com.google.spanner.admin.database.v1.DropDatabaseRequest;
 import com.google.spanner.admin.database.v1.GetBackupRequest;
@@ -61,6 +65,8 @@ import com.google.spanner.admin.database.v1.ListBackupsRequest;
 import com.google.spanner.admin.database.v1.ListBackupsResponse;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsRequest;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsResponse;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesRequest;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesResponse;
 import com.google.spanner.admin.database.v1.ListDatabasesRequest;
 import com.google.spanner.admin.database.v1.ListDatabasesResponse;
 import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
@@ -1550,6 +1556,327 @@ public class DatabaseAdminClient implements BackgroundResource {
 
   // AUTO-GENERATED DOCUMENTATION AND METHOD.
   /**
+   * Starts copying a Cloud Spanner Backup. The returned backup [long-running
+   * operation][google.longrunning.Operation] will have a name of the format
+   * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+   * and can be used to track copying of the backup. The operation is associated with the
+   * destination backup. The [metadata][google.longrunning.Operation.metadata] field type is
+   * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]. The
+   * [response][google.longrunning.Operation.response] field type is
+   * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned
+   * operation will stop the copying and delete the backup. Concurrent CopyBackup requests can run
+   * on the same source backup.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   InstanceName parent = InstanceName.of("[PROJECT]", "[INSTANCE]");
+   *   String backupId = "backupId2121930365";
+   *   BackupName sourceBackup = BackupName.of("[PROJECT]", "[INSTANCE]", "[BACKUP]");
+   *   Timestamp expireTime = Timestamp.newBuilder().build();
+   *   Backup response =
+   *       databaseAdminClient.copyBackupAsync(parent, backupId, sourceBackup, expireTime).get();
+   * }
+   * }</pre>
+   *
+   * @param parent Required. The name of the destination instance that will contain the backup copy.
+   *     Values are of the form: `projects/&lt;project&gt;/instances/&lt;instance&gt;`.
+   * @param backupId Required. The id of the backup copy. The `backup_id` appended to `parent` forms
+   *     the full backup_uri of the form
+   *     `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;`.
+   * @param sourceBackup Required. The source backup to be copied. The source backup needs to be in
+   *     READY state for it to be copied. Once CopyBackup is in progress, the source backup cannot
+   *     be deleted or cleaned up on expiration until CopyBackup is finished. Values are of the
+   *     form: `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;`.
+   * @param expireTime Required. The expiration time of the backup in microsecond granularity. The
+   *     expiration time must be at least 6 hours and at most 366 days from the `create_time` of the
+   *     source backup. Once the `expire_time` has passed, the backup is eligible to be
+   *     automatically deleted by Cloud Spanner to free the resources used by the backup.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final OperationFuture<Backup, CopyBackupMetadata> copyBackupAsync(
+      InstanceName parent, String backupId, BackupName sourceBackup, Timestamp expireTime) {
+    CopyBackupRequest request =
+        CopyBackupRequest.newBuilder()
+            .setParent(parent == null ? null : parent.toString())
+            .setBackupId(backupId)
+            .setSourceBackup(sourceBackup == null ? null : sourceBackup.toString())
+            .setExpireTime(expireTime)
+            .build();
+    return copyBackupAsync(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Starts copying a Cloud Spanner Backup. The returned backup [long-running
+   * operation][google.longrunning.Operation] will have a name of the format
+   * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+   * and can be used to track copying of the backup. The operation is associated with the
+   * destination backup. The [metadata][google.longrunning.Operation.metadata] field type is
+   * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]. The
+   * [response][google.longrunning.Operation.response] field type is
+   * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned
+   * operation will stop the copying and delete the backup. Concurrent CopyBackup requests can run
+   * on the same source backup.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   InstanceName parent = InstanceName.of("[PROJECT]", "[INSTANCE]");
+   *   String backupId = "backupId2121930365";
+   *   String sourceBackup = BackupName.of("[PROJECT]", "[INSTANCE]", "[BACKUP]").toString();
+   *   Timestamp expireTime = Timestamp.newBuilder().build();
+   *   Backup response =
+   *       databaseAdminClient.copyBackupAsync(parent, backupId, sourceBackup, expireTime).get();
+   * }
+   * }</pre>
+   *
+   * @param parent Required. The name of the destination instance that will contain the backup copy.
+   *     Values are of the form: `projects/&lt;project&gt;/instances/&lt;instance&gt;`.
+   * @param backupId Required. The id of the backup copy. The `backup_id` appended to `parent` forms
+   *     the full backup_uri of the form
+   *     `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;`.
+   * @param sourceBackup Required. The source backup to be copied. The source backup needs to be in
+   *     READY state for it to be copied. Once CopyBackup is in progress, the source backup cannot
+   *     be deleted or cleaned up on expiration until CopyBackup is finished. Values are of the
+   *     form: `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;`.
+   * @param expireTime Required. The expiration time of the backup in microsecond granularity. The
+   *     expiration time must be at least 6 hours and at most 366 days from the `create_time` of the
+   *     source backup. Once the `expire_time` has passed, the backup is eligible to be
+   *     automatically deleted by Cloud Spanner to free the resources used by the backup.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final OperationFuture<Backup, CopyBackupMetadata> copyBackupAsync(
+      InstanceName parent, String backupId, String sourceBackup, Timestamp expireTime) {
+    CopyBackupRequest request =
+        CopyBackupRequest.newBuilder()
+            .setParent(parent == null ? null : parent.toString())
+            .setBackupId(backupId)
+            .setSourceBackup(sourceBackup)
+            .setExpireTime(expireTime)
+            .build();
+    return copyBackupAsync(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Starts copying a Cloud Spanner Backup. The returned backup [long-running
+   * operation][google.longrunning.Operation] will have a name of the format
+   * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+   * and can be used to track copying of the backup. The operation is associated with the
+   * destination backup. The [metadata][google.longrunning.Operation.metadata] field type is
+   * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]. The
+   * [response][google.longrunning.Operation.response] field type is
+   * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned
+   * operation will stop the copying and delete the backup. Concurrent CopyBackup requests can run
+   * on the same source backup.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   String parent = InstanceName.of("[PROJECT]", "[INSTANCE]").toString();
+   *   String backupId = "backupId2121930365";
+   *   BackupName sourceBackup = BackupName.of("[PROJECT]", "[INSTANCE]", "[BACKUP]");
+   *   Timestamp expireTime = Timestamp.newBuilder().build();
+   *   Backup response =
+   *       databaseAdminClient.copyBackupAsync(parent, backupId, sourceBackup, expireTime).get();
+   * }
+   * }</pre>
+   *
+   * @param parent Required. The name of the destination instance that will contain the backup copy.
+   *     Values are of the form: `projects/&lt;project&gt;/instances/&lt;instance&gt;`.
+   * @param backupId Required. The id of the backup copy. The `backup_id` appended to `parent` forms
+   *     the full backup_uri of the form
+   *     `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;`.
+   * @param sourceBackup Required. The source backup to be copied. The source backup needs to be in
+   *     READY state for it to be copied. Once CopyBackup is in progress, the source backup cannot
+   *     be deleted or cleaned up on expiration until CopyBackup is finished. Values are of the
+   *     form: `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;`.
+   * @param expireTime Required. The expiration time of the backup in microsecond granularity. The
+   *     expiration time must be at least 6 hours and at most 366 days from the `create_time` of the
+   *     source backup. Once the `expire_time` has passed, the backup is eligible to be
+   *     automatically deleted by Cloud Spanner to free the resources used by the backup.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final OperationFuture<Backup, CopyBackupMetadata> copyBackupAsync(
+      String parent, String backupId, BackupName sourceBackup, Timestamp expireTime) {
+    CopyBackupRequest request =
+        CopyBackupRequest.newBuilder()
+            .setParent(parent)
+            .setBackupId(backupId)
+            .setSourceBackup(sourceBackup == null ? null : sourceBackup.toString())
+            .setExpireTime(expireTime)
+            .build();
+    return copyBackupAsync(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Starts copying a Cloud Spanner Backup. The returned backup [long-running
+   * operation][google.longrunning.Operation] will have a name of the format
+   * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+   * and can be used to track copying of the backup. The operation is associated with the
+   * destination backup. The [metadata][google.longrunning.Operation.metadata] field type is
+   * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]. The
+   * [response][google.longrunning.Operation.response] field type is
+   * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned
+   * operation will stop the copying and delete the backup. Concurrent CopyBackup requests can run
+   * on the same source backup.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   String parent = InstanceName.of("[PROJECT]", "[INSTANCE]").toString();
+   *   String backupId = "backupId2121930365";
+   *   String sourceBackup = BackupName.of("[PROJECT]", "[INSTANCE]", "[BACKUP]").toString();
+   *   Timestamp expireTime = Timestamp.newBuilder().build();
+   *   Backup response =
+   *       databaseAdminClient.copyBackupAsync(parent, backupId, sourceBackup, expireTime).get();
+   * }
+   * }</pre>
+   *
+   * @param parent Required. The name of the destination instance that will contain the backup copy.
+   *     Values are of the form: `projects/&lt;project&gt;/instances/&lt;instance&gt;`.
+   * @param backupId Required. The id of the backup copy. The `backup_id` appended to `parent` forms
+   *     the full backup_uri of the form
+   *     `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;`.
+   * @param sourceBackup Required. The source backup to be copied. The source backup needs to be in
+   *     READY state for it to be copied. Once CopyBackup is in progress, the source backup cannot
+   *     be deleted or cleaned up on expiration until CopyBackup is finished. Values are of the
+   *     form: `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;`.
+   * @param expireTime Required. The expiration time of the backup in microsecond granularity. The
+   *     expiration time must be at least 6 hours and at most 366 days from the `create_time` of the
+   *     source backup. Once the `expire_time` has passed, the backup is eligible to be
+   *     automatically deleted by Cloud Spanner to free the resources used by the backup.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final OperationFuture<Backup, CopyBackupMetadata> copyBackupAsync(
+      String parent, String backupId, String sourceBackup, Timestamp expireTime) {
+    CopyBackupRequest request =
+        CopyBackupRequest.newBuilder()
+            .setParent(parent)
+            .setBackupId(backupId)
+            .setSourceBackup(sourceBackup)
+            .setExpireTime(expireTime)
+            .build();
+    return copyBackupAsync(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Starts copying a Cloud Spanner Backup. The returned backup [long-running
+   * operation][google.longrunning.Operation] will have a name of the format
+   * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+   * and can be used to track copying of the backup. The operation is associated with the
+   * destination backup. The [metadata][google.longrunning.Operation.metadata] field type is
+   * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]. The
+   * [response][google.longrunning.Operation.response] field type is
+   * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned
+   * operation will stop the copying and delete the backup. Concurrent CopyBackup requests can run
+   * on the same source backup.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   CopyBackupRequest request =
+   *       CopyBackupRequest.newBuilder()
+   *           .setParent(InstanceName.of("[PROJECT]", "[INSTANCE]").toString())
+   *           .setBackupId("backupId2121930365")
+   *           .setSourceBackup(BackupName.of("[PROJECT]", "[INSTANCE]", "[BACKUP]").toString())
+   *           .setExpireTime(Timestamp.newBuilder().build())
+   *           .setEncryptionConfig(CopyBackupEncryptionConfig.newBuilder().build())
+   *           .build();
+   *   Backup response = databaseAdminClient.copyBackupAsync(request).get();
+   * }
+   * }</pre>
+   *
+   * @param request The request object containing all of the parameters for the API call.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final OperationFuture<Backup, CopyBackupMetadata> copyBackupAsync(
+      CopyBackupRequest request) {
+    return copyBackupOperationCallable().futureCall(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Starts copying a Cloud Spanner Backup. The returned backup [long-running
+   * operation][google.longrunning.Operation] will have a name of the format
+   * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+   * and can be used to track copying of the backup. The operation is associated with the
+   * destination backup. The [metadata][google.longrunning.Operation.metadata] field type is
+   * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]. The
+   * [response][google.longrunning.Operation.response] field type is
+   * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned
+   * operation will stop the copying and delete the backup. Concurrent CopyBackup requests can run
+   * on the same source backup.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   CopyBackupRequest request =
+   *       CopyBackupRequest.newBuilder()
+   *           .setParent(InstanceName.of("[PROJECT]", "[INSTANCE]").toString())
+   *           .setBackupId("backupId2121930365")
+   *           .setSourceBackup(BackupName.of("[PROJECT]", "[INSTANCE]", "[BACKUP]").toString())
+   *           .setExpireTime(Timestamp.newBuilder().build())
+   *           .setEncryptionConfig(CopyBackupEncryptionConfig.newBuilder().build())
+   *           .build();
+   *   OperationFuture<Backup, CopyBackupMetadata> future =
+   *       databaseAdminClient.copyBackupOperationCallable().futureCall(request);
+   *   // Do something.
+   *   Backup response = future.get();
+   * }
+   * }</pre>
+   */
+  public final OperationCallable<CopyBackupRequest, Backup, CopyBackupMetadata>
+      copyBackupOperationCallable() {
+    return stub.copyBackupOperationCallable();
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Starts copying a Cloud Spanner Backup. The returned backup [long-running
+   * operation][google.longrunning.Operation] will have a name of the format
+   * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+   * and can be used to track copying of the backup. The operation is associated with the
+   * destination backup. The [metadata][google.longrunning.Operation.metadata] field type is
+   * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata]. The
+   * [response][google.longrunning.Operation.response] field type is
+   * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned
+   * operation will stop the copying and delete the backup. Concurrent CopyBackup requests can run
+   * on the same source backup.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   CopyBackupRequest request =
+   *       CopyBackupRequest.newBuilder()
+   *           .setParent(InstanceName.of("[PROJECT]", "[INSTANCE]").toString())
+   *           .setBackupId("backupId2121930365")
+   *           .setSourceBackup(BackupName.of("[PROJECT]", "[INSTANCE]", "[BACKUP]").toString())
+   *           .setExpireTime(Timestamp.newBuilder().build())
+   *           .setEncryptionConfig(CopyBackupEncryptionConfig.newBuilder().build())
+   *           .build();
+   *   ApiFuture<Operation> future = databaseAdminClient.copyBackupCallable().futureCall(request);
+   *   // Do something.
+   *   Operation response = future.get();
+   * }
+   * }</pre>
+   */
+  public final UnaryCallable<CopyBackupRequest, Operation> copyBackupCallable() {
+    return stub.copyBackupCallable();
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
    * Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup].
    *
    * <p>Sample code:
@@ -2626,6 +2953,148 @@ public class DatabaseAdminClient implements BackgroundResource {
     return stub.listBackupOperationsCallable();
   }
 
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Lists Cloud Spanner database roles.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   DatabaseName parent = DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]");
+   *   for (DatabaseRole element : databaseAdminClient.listDatabaseRoles(parent).iterateAll()) {
+   *     // doThingsWith(element);
+   *   }
+   * }
+   * }</pre>
+   *
+   * @param parent Required. The database whose roles should be listed. Values are of the form
+   *     `projects/&lt;project&gt;/instances/&lt;instance&gt;/databases/&lt;database&gt;/databaseRoles`.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final ListDatabaseRolesPagedResponse listDatabaseRoles(DatabaseName parent) {
+    ListDatabaseRolesRequest request =
+        ListDatabaseRolesRequest.newBuilder()
+            .setParent(parent == null ? null : parent.toString())
+            .build();
+    return listDatabaseRoles(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Lists Cloud Spanner database roles.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   String parent = DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString();
+   *   for (DatabaseRole element : databaseAdminClient.listDatabaseRoles(parent).iterateAll()) {
+   *     // doThingsWith(element);
+   *   }
+   * }
+   * }</pre>
+   *
+   * @param parent Required. The database whose roles should be listed. Values are of the form
+   *     `projects/&lt;project&gt;/instances/&lt;instance&gt;/databases/&lt;database&gt;/databaseRoles`.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final ListDatabaseRolesPagedResponse listDatabaseRoles(String parent) {
+    ListDatabaseRolesRequest request =
+        ListDatabaseRolesRequest.newBuilder().setParent(parent).build();
+    return listDatabaseRoles(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Lists Cloud Spanner database roles.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   ListDatabaseRolesRequest request =
+   *       ListDatabaseRolesRequest.newBuilder()
+   *           .setParent(DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString())
+   *           .setPageSize(883849137)
+   *           .setPageToken("pageToken873572522")
+   *           .build();
+   *   for (DatabaseRole element : databaseAdminClient.listDatabaseRoles(request).iterateAll()) {
+   *     // doThingsWith(element);
+   *   }
+   * }
+   * }</pre>
+   *
+   * @param request The request object containing all of the parameters for the API call.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final ListDatabaseRolesPagedResponse listDatabaseRoles(ListDatabaseRolesRequest request) {
+    return listDatabaseRolesPagedCallable().call(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Lists Cloud Spanner database roles.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   ListDatabaseRolesRequest request =
+   *       ListDatabaseRolesRequest.newBuilder()
+   *           .setParent(DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString())
+   *           .setPageSize(883849137)
+   *           .setPageToken("pageToken873572522")
+   *           .build();
+   *   ApiFuture<DatabaseRole> future =
+   *       databaseAdminClient.listDatabaseRolesPagedCallable().futureCall(request);
+   *   // Do something.
+   *   for (DatabaseRole element : future.get().iterateAll()) {
+   *     // doThingsWith(element);
+   *   }
+   * }
+   * }</pre>
+   */
+  public final UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesPagedResponse>
+      listDatabaseRolesPagedCallable() {
+    return stub.listDatabaseRolesPagedCallable();
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Lists Cloud Spanner database roles.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   ListDatabaseRolesRequest request =
+   *       ListDatabaseRolesRequest.newBuilder()
+   *           .setParent(DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString())
+   *           .setPageSize(883849137)
+   *           .setPageToken("pageToken873572522")
+   *           .build();
+   *   while (true) {
+   *     ListDatabaseRolesResponse response =
+   *         databaseAdminClient.listDatabaseRolesCallable().call(request);
+   *     for (DatabaseRole element : response.getResponsesList()) {
+   *       // doThingsWith(element);
+   *     }
+   *     String nextPageToken = response.getNextPageToken();
+   *     if (!Strings.isNullOrEmpty(nextPageToken)) {
+   *       request = request.toBuilder().setPageToken(nextPageToken).build();
+   *     } else {
+   *       break;
+   *     }
+   *   }
+   * }
+   * }</pre>
+   */
+  public final UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesResponse>
+      listDatabaseRolesCallable() {
+    return stub.listDatabaseRolesCallable();
+  }
+
   @Override
   public final void close() {
     stub.close();
@@ -2966,6 +3435,86 @@ public class DatabaseAdminClient implements BackgroundResource {
     protected ListBackupOperationsFixedSizeCollection createCollection(
         List<ListBackupOperationsPage> pages, int collectionSize) {
       return new ListBackupOperationsFixedSizeCollection(pages, collectionSize);
+    }
+  }
+
+  public static class ListDatabaseRolesPagedResponse
+      extends AbstractPagedListResponse<
+          ListDatabaseRolesRequest,
+          ListDatabaseRolesResponse,
+          DatabaseRole,
+          ListDatabaseRolesPage,
+          ListDatabaseRolesFixedSizeCollection> {
+
+    public static ApiFuture<ListDatabaseRolesPagedResponse> createAsync(
+        PageContext<ListDatabaseRolesRequest, ListDatabaseRolesResponse, DatabaseRole> context,
+        ApiFuture<ListDatabaseRolesResponse> futureResponse) {
+      ApiFuture<ListDatabaseRolesPage> futurePage =
+          ListDatabaseRolesPage.createEmptyPage().createPageAsync(context, futureResponse);
+      return ApiFutures.transform(
+          futurePage,
+          input -> new ListDatabaseRolesPagedResponse(input),
+          MoreExecutors.directExecutor());
+    }
+
+    private ListDatabaseRolesPagedResponse(ListDatabaseRolesPage page) {
+      super(page, ListDatabaseRolesFixedSizeCollection.createEmptyCollection());
+    }
+  }
+
+  public static class ListDatabaseRolesPage
+      extends AbstractPage<
+          ListDatabaseRolesRequest,
+          ListDatabaseRolesResponse,
+          DatabaseRole,
+          ListDatabaseRolesPage> {
+
+    private ListDatabaseRolesPage(
+        PageContext<ListDatabaseRolesRequest, ListDatabaseRolesResponse, DatabaseRole> context,
+        ListDatabaseRolesResponse response) {
+      super(context, response);
+    }
+
+    private static ListDatabaseRolesPage createEmptyPage() {
+      return new ListDatabaseRolesPage(null, null);
+    }
+
+    @Override
+    protected ListDatabaseRolesPage createPage(
+        PageContext<ListDatabaseRolesRequest, ListDatabaseRolesResponse, DatabaseRole> context,
+        ListDatabaseRolesResponse response) {
+      return new ListDatabaseRolesPage(context, response);
+    }
+
+    @Override
+    public ApiFuture<ListDatabaseRolesPage> createPageAsync(
+        PageContext<ListDatabaseRolesRequest, ListDatabaseRolesResponse, DatabaseRole> context,
+        ApiFuture<ListDatabaseRolesResponse> futureResponse) {
+      return super.createPageAsync(context, futureResponse);
+    }
+  }
+
+  public static class ListDatabaseRolesFixedSizeCollection
+      extends AbstractFixedSizeCollection<
+          ListDatabaseRolesRequest,
+          ListDatabaseRolesResponse,
+          DatabaseRole,
+          ListDatabaseRolesPage,
+          ListDatabaseRolesFixedSizeCollection> {
+
+    private ListDatabaseRolesFixedSizeCollection(
+        List<ListDatabaseRolesPage> pages, int collectionSize) {
+      super(pages, collectionSize);
+    }
+
+    private static ListDatabaseRolesFixedSizeCollection createEmptyCollection() {
+      return new ListDatabaseRolesFixedSizeCollection(null, 0);
+    }
+
+    @Override
+    protected ListDatabaseRolesFixedSizeCollection createCollection(
+        List<ListDatabaseRolesPage> pages, int collectionSize) {
+      return new ListDatabaseRolesFixedSizeCollection(pages, collectionSize);
     }
   }
 }

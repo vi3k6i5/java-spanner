@@ -19,6 +19,7 @@ package com.google.cloud.spanner.admin.database.v1;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListBackupOperationsPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListBackupsPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabaseOperationsPagedResponse;
+import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabaseRolesPagedResponse;
 import static com.google.cloud.spanner.admin.database.v1.DatabaseAdminClient.ListDatabasesPagedResponse;
 
 import com.google.api.core.ApiFunction;
@@ -42,6 +43,8 @@ import com.google.iam.v1.TestIamPermissionsResponse;
 import com.google.longrunning.Operation;
 import com.google.protobuf.Empty;
 import com.google.spanner.admin.database.v1.Backup;
+import com.google.spanner.admin.database.v1.CopyBackupMetadata;
+import com.google.spanner.admin.database.v1.CopyBackupRequest;
 import com.google.spanner.admin.database.v1.CreateBackupMetadata;
 import com.google.spanner.admin.database.v1.CreateBackupRequest;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
@@ -59,6 +62,8 @@ import com.google.spanner.admin.database.v1.ListBackupsRequest;
 import com.google.spanner.admin.database.v1.ListBackupsResponse;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsRequest;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsResponse;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesRequest;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesResponse;
 import com.google.spanner.admin.database.v1.ListDatabasesRequest;
 import com.google.spanner.admin.database.v1.ListDatabasesResponse;
 import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
@@ -174,6 +179,17 @@ public class DatabaseAdminSettings extends ClientSettings<DatabaseAdminSettings>
     return ((DatabaseAdminStubSettings) getStubSettings()).createBackupOperationSettings();
   }
 
+  /** Returns the object with the settings used for calls to copyBackup. */
+  public UnaryCallSettings<CopyBackupRequest, Operation> copyBackupSettings() {
+    return ((DatabaseAdminStubSettings) getStubSettings()).copyBackupSettings();
+  }
+
+  /** Returns the object with the settings used for calls to copyBackup. */
+  public OperationCallSettings<CopyBackupRequest, Backup, CopyBackupMetadata>
+      copyBackupOperationSettings() {
+    return ((DatabaseAdminStubSettings) getStubSettings()).copyBackupOperationSettings();
+  }
+
   /** Returns the object with the settings used for calls to getBackup. */
   public UnaryCallSettings<GetBackupRequest, Backup> getBackupSettings() {
     return ((DatabaseAdminStubSettings) getStubSettings()).getBackupSettings();
@@ -222,6 +238,13 @@ public class DatabaseAdminSettings extends ClientSettings<DatabaseAdminSettings>
           ListBackupOperationsPagedResponse>
       listBackupOperationsSettings() {
     return ((DatabaseAdminStubSettings) getStubSettings()).listBackupOperationsSettings();
+  }
+
+  /** Returns the object with the settings used for calls to listDatabaseRoles. */
+  public PagedCallSettings<
+          ListDatabaseRolesRequest, ListDatabaseRolesResponse, ListDatabaseRolesPagedResponse>
+      listDatabaseRolesSettings() {
+    return ((DatabaseAdminStubSettings) getStubSettings()).listDatabaseRolesSettings();
   }
 
   public static final DatabaseAdminSettings create(DatabaseAdminStubSettings stub)
@@ -394,6 +417,17 @@ public class DatabaseAdminSettings extends ClientSettings<DatabaseAdminSettings>
       return getStubSettingsBuilder().createBackupOperationSettings();
     }
 
+    /** Returns the builder for the settings used for calls to copyBackup. */
+    public UnaryCallSettings.Builder<CopyBackupRequest, Operation> copyBackupSettings() {
+      return getStubSettingsBuilder().copyBackupSettings();
+    }
+
+    /** Returns the builder for the settings used for calls to copyBackup. */
+    public OperationCallSettings.Builder<CopyBackupRequest, Backup, CopyBackupMetadata>
+        copyBackupOperationSettings() {
+      return getStubSettingsBuilder().copyBackupOperationSettings();
+    }
+
     /** Returns the builder for the settings used for calls to getBackup. */
     public UnaryCallSettings.Builder<GetBackupRequest, Backup> getBackupSettings() {
       return getStubSettingsBuilder().getBackupSettings();
@@ -443,6 +477,13 @@ public class DatabaseAdminSettings extends ClientSettings<DatabaseAdminSettings>
             ListBackupOperationsPagedResponse>
         listBackupOperationsSettings() {
       return getStubSettingsBuilder().listBackupOperationsSettings();
+    }
+
+    /** Returns the builder for the settings used for calls to listDatabaseRoles. */
+    public PagedCallSettings.Builder<
+            ListDatabaseRolesRequest, ListDatabaseRolesResponse, ListDatabaseRolesPagedResponse>
+        listDatabaseRolesSettings() {
+      return getStubSettingsBuilder().listDatabaseRolesSettings();
     }
 
     @Override

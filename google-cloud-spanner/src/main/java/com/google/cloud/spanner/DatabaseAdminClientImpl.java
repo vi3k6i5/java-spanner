@@ -23,7 +23,6 @@ import com.google.api.gax.paging.Page;
 import com.google.cloud.Policy;
 import com.google.cloud.Policy.DefaultMarshaller;
 import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.DatabaseInfo.State;
 import com.google.cloud.spanner.Options.ListOption;
 import com.google.cloud.spanner.SpannerImpl.PageFetcher;
 import com.google.cloud.spanner.spi.v1.SpannerRpc;
@@ -33,10 +32,7 @@ import com.google.common.base.Preconditions;
 import com.google.longrunning.Operation;
 import com.google.protobuf.Empty;
 import com.google.protobuf.FieldMask;
-import com.google.spanner.admin.database.v1.CreateBackupMetadata;
-import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
-import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
-import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
+import com.google.spanner.admin.database.v1.*;
 import java.util.List;
 import java.util.UUID;
 import javax.annotation.Nullable;
@@ -167,6 +163,49 @@ class DatabaseAdminClientImpl implements DatabaseAdminClient {
   }
 
   @Override
+  public OperationFuture<Backup, CopyBackupMetadata> copyBackup(
+      String instanceId, String sourceBackupId, String destinationBackupId, Timestamp expireTime)
+      throws SpannerException {
+    final Backup destinationBackup =
+        newBackupBuilder(BackupId.of(projectId, instanceId, destinationBackupId))
+            .setExpireTime(expireTime)
+            .build();
+
+    return copyBackup(BackupId.of(projectId, instanceId, sourceBackupId), destinationBackup);
+  }
+
+  @Override
+  public OperationFuture<Backup, CopyBackupMetadata> copyBackup(
+      BackupId sourceBackupId, Backup destinationBackup) throws SpannerException {
+    Preconditions.checkNotNull(sourceBackupId);
+    Preconditions.checkNotNull(destinationBackup);
+
+    final OperationFuture<com.google.spanner.admin.database.v1.Backup, CopyBackupMetadata>
+        rawOperationFuture = rpc.copyBackup(sourceBackupId, destinationBackup);
+
+    return new OperationFutureImpl<>(
+        rawOperationFuture.getPollingFuture(),
+        rawOperationFuture.getInitialFuture(),
+        snapshot -> {
+          com.google.spanner.admin.database.v1.Backup proto =
+              ProtoOperationTransformers.ResponseTransformer.create(
+                      com.google.spanner.admin.database.v1.Backup.class)
+                  .apply(snapshot);
+          return Backup.fromProto(
+              com.google.spanner.admin.database.v1.Backup.newBuilder(proto)
+                  .setName(proto.getName())
+                  .setExpireTime(proto.getExpireTime())
+                  .setEncryptionInfo(proto.getEncryptionInfo())
+                  .build(),
+              DatabaseAdminClientImpl.this);
+        },
+        ProtoOperationTransformers.MetadataTransformer.create(CopyBackupMetadata.class),
+        e -> {
+          throw SpannerExceptionFactory.newSpannerException(e);
+        });
+  }
+
+  @Override
   public Backup updateBackup(String instanceId, String backupId, Timestamp expireTime) {
     String backupName = getBackupName(instanceId, backupId);
     final com.google.spanner.admin.database.v1.Backup backup =
@@ -252,6 +291,45 @@ class DatabaseAdminClientImpl implements DatabaseAdminClient {
   }
 
   @Override
+  public final Page<DatabaseRole> listDatabaseRoles(
+      String instanceId, String databaseId, ListOption... options) {
+    final String databaseName = getDatabaseName(instanceId, databaseId);
+    final Options listOptions = Options.fromListOptions(options);
+    Preconditions.checkArgument(
+        !listOptions.hasFilter(), "Filter option is not supported by listDatabasesRoles");
+    final int pageSize = listOptions.hasPageSize() ? listOptions.pageSize() : 0;
+
+    PageFetcher<DatabaseRole, com.google.spanner.admin.database.v1.DatabaseRole> pageFetcher =
+        new PageFetcher<DatabaseRole, com.google.spanner.admin.database.v1.DatabaseRole>() {
+          @Override
+          public Paginated<com.google.spanner.admin.database.v1.DatabaseRole> getNextPage(
+              String nextPageToken) {
+            try {
+              return rpc.listDatabaseRoles(databaseName, pageSize, nextPageToken);
+            } catch (SpannerException e) {
+              throw SpannerExceptionFactory.newSpannerException(
+                  e.getErrorCode(),
+                  String.format(
+                      "Failed to list the databases roles of %s with pageToken %s: %s",
+                      databaseName,
+                      MoreObjects.firstNonNull(nextPageToken, "<null>"),
+                      e.getMessage()),
+                  e);
+            }
+          }
+
+          @Override
+          public DatabaseRole fromProto(com.google.spanner.admin.database.v1.DatabaseRole proto) {
+            return DatabaseRole.fromProto(proto);
+          }
+        };
+    if (listOptions.hasPageToken()) {
+      pageFetcher.setNextPageToken(listOptions.pageToken());
+    }
+    return pageFetcher.getNextPage();
+  }
+
+  @Override
   public Page<Backup> listBackups(String instanceId, ListOption... options) {
     final String instanceName = getInstanceName(instanceId);
     final Options listOptions = Options.fromListOptions(options);
@@ -281,14 +359,18 @@ class DatabaseAdminClientImpl implements DatabaseAdminClient {
   public OperationFuture<Database, CreateDatabaseMetadata> createDatabase(
       String instanceId, String databaseId, Iterable<String> statements) throws SpannerException {
     return createDatabase(
-        new Database(DatabaseId.of(projectId, instanceId, databaseId), State.UNSPECIFIED, this),
+        newDatabaseBuilder(DatabaseId.of(projectId, instanceId, databaseId))
+            .setDialect(Dialect.GOOGLE_STANDARD_SQL)
+            .build(),
         statements);
   }
 
   @Override
   public OperationFuture<Database, CreateDatabaseMetadata> createDatabase(
       Database database, Iterable<String> statements) throws SpannerException {
-    String createStatement = "CREATE DATABASE `" + database.getId().getDatabase() + "`";
+    final Dialect dialect = Preconditions.checkNotNull(database.getDialect());
+    final String createStatement =
+        dialect.createDatabaseStatementFor(database.getId().getDatabase());
     OperationFuture<com.google.spanner.admin.database.v1.Database, CreateDatabaseMetadata>
         rawOperationFuture =
             rpc.createDatabase(

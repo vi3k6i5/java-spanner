@@ -482,6 +482,49 @@ public final class DatabaseAdminGrpc {
   }
 
   private static volatile io.grpc.MethodDescriptor<
+          com.google.spanner.admin.database.v1.CopyBackupRequest, com.google.longrunning.Operation>
+      getCopyBackupMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "CopyBackup",
+      requestType = com.google.spanner.admin.database.v1.CopyBackupRequest.class,
+      responseType = com.google.longrunning.Operation.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<
+          com.google.spanner.admin.database.v1.CopyBackupRequest, com.google.longrunning.Operation>
+      getCopyBackupMethod() {
+    io.grpc.MethodDescriptor<
+            com.google.spanner.admin.database.v1.CopyBackupRequest,
+            com.google.longrunning.Operation>
+        getCopyBackupMethod;
+    if ((getCopyBackupMethod = DatabaseAdminGrpc.getCopyBackupMethod) == null) {
+      synchronized (DatabaseAdminGrpc.class) {
+        if ((getCopyBackupMethod = DatabaseAdminGrpc.getCopyBackupMethod) == null) {
+          DatabaseAdminGrpc.getCopyBackupMethod =
+              getCopyBackupMethod =
+                  io.grpc.MethodDescriptor
+                      .<com.google.spanner.admin.database.v1.CopyBackupRequest,
+                          com.google.longrunning.Operation>
+                          newBuilder()
+                      .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+                      .setFullMethodName(generateFullMethodName(SERVICE_NAME, "CopyBackup"))
+                      .setSampledToLocalTracing(true)
+                      .setRequestMarshaller(
+                          io.grpc.protobuf.ProtoUtils.marshaller(
+                              com.google.spanner.admin.database.v1.CopyBackupRequest
+                                  .getDefaultInstance()))
+                      .setResponseMarshaller(
+                          io.grpc.protobuf.ProtoUtils.marshaller(
+                              com.google.longrunning.Operation.getDefaultInstance()))
+                      .setSchemaDescriptor(new DatabaseAdminMethodDescriptorSupplier("CopyBackup"))
+                      .build();
+        }
+      }
+    }
+    return getCopyBackupMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<
           com.google.spanner.admin.database.v1.GetBackupRequest,
           com.google.spanner.admin.database.v1.Backup>
       getGetBackupMethod;
@@ -806,6 +849,53 @@ public final class DatabaseAdminGrpc {
     return getListBackupOperationsMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<
+          com.google.spanner.admin.database.v1.ListDatabaseRolesRequest,
+          com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>
+      getListDatabaseRolesMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "ListDatabaseRoles",
+      requestType = com.google.spanner.admin.database.v1.ListDatabaseRolesRequest.class,
+      responseType = com.google.spanner.admin.database.v1.ListDatabaseRolesResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<
+          com.google.spanner.admin.database.v1.ListDatabaseRolesRequest,
+          com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>
+      getListDatabaseRolesMethod() {
+    io.grpc.MethodDescriptor<
+            com.google.spanner.admin.database.v1.ListDatabaseRolesRequest,
+            com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>
+        getListDatabaseRolesMethod;
+    if ((getListDatabaseRolesMethod = DatabaseAdminGrpc.getListDatabaseRolesMethod) == null) {
+      synchronized (DatabaseAdminGrpc.class) {
+        if ((getListDatabaseRolesMethod = DatabaseAdminGrpc.getListDatabaseRolesMethod) == null) {
+          DatabaseAdminGrpc.getListDatabaseRolesMethod =
+              getListDatabaseRolesMethod =
+                  io.grpc.MethodDescriptor
+                      .<com.google.spanner.admin.database.v1.ListDatabaseRolesRequest,
+                          com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>
+                          newBuilder()
+                      .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+                      .setFullMethodName(generateFullMethodName(SERVICE_NAME, "ListDatabaseRoles"))
+                      .setSampledToLocalTracing(true)
+                      .setRequestMarshaller(
+                          io.grpc.protobuf.ProtoUtils.marshaller(
+                              com.google.spanner.admin.database.v1.ListDatabaseRolesRequest
+                                  .getDefaultInstance()))
+                      .setResponseMarshaller(
+                          io.grpc.protobuf.ProtoUtils.marshaller(
+                              com.google.spanner.admin.database.v1.ListDatabaseRolesResponse
+                                  .getDefaultInstance()))
+                      .setSchemaDescriptor(
+                          new DatabaseAdminMethodDescriptorSupplier("ListDatabaseRoles"))
+                      .build();
+        }
+      }
+    }
+    return getListDatabaseRolesMethod;
+  }
+
   /** Creates a new async stub that supports all call types for the service */
   public static DatabaseAdminStub newStub(io.grpc.Channel channel) {
     io.grpc.stub.AbstractStub.StubFactory<DatabaseAdminStub> factory =
@@ -1058,6 +1148,30 @@ public final class DatabaseAdminGrpc {
      *
      *
      * <pre>
+     * Starts copying a Cloud Spanner Backup.
+     * The returned backup [long-running operation][google.longrunning.Operation]
+     * will have a name of the format
+     * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+     * and can be used to track copying of the backup. The operation is associated
+     * with the destination backup.
+     * The [metadata][google.longrunning.Operation.metadata] field type is
+     * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata].
+     * The [response][google.longrunning.Operation.response] field type is
+     * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the
+     * copying and delete the backup.
+     * Concurrent CopyBackup requests can run on the same source backup.
+     * </pre>
+     */
+    public void copyBackup(
+        com.google.spanner.admin.database.v1.CopyBackupRequest request,
+        io.grpc.stub.StreamObserver<com.google.longrunning.Operation> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getCopyBackupMethod(), responseObserver);
+    }
+
+    /**
+     *
+     *
+     * <pre>
      * Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup].
      * </pre>
      */
@@ -1190,6 +1304,21 @@ public final class DatabaseAdminGrpc {
           getListBackupOperationsMethod(), responseObserver);
     }
 
+    /**
+     *
+     *
+     * <pre>
+     * Lists Cloud Spanner database roles.
+     * </pre>
+     */
+    public void listDatabaseRoles(
+        com.google.spanner.admin.database.v1.ListDatabaseRolesRequest request,
+        io.grpc.stub.StreamObserver<com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>
+            responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(
+          getListDatabaseRolesMethod(), responseObserver);
+    }
+
     @java.lang.Override
     public final io.grpc.ServerServiceDefinition bindService() {
       return io.grpc.ServerServiceDefinition.builder(getServiceDescriptor())
@@ -1257,6 +1386,12 @@ public final class DatabaseAdminGrpc {
                       com.google.spanner.admin.database.v1.CreateBackupRequest,
                       com.google.longrunning.Operation>(this, METHODID_CREATE_BACKUP)))
           .addMethod(
+              getCopyBackupMethod(),
+              io.grpc.stub.ServerCalls.asyncUnaryCall(
+                  new MethodHandlers<
+                      com.google.spanner.admin.database.v1.CopyBackupRequest,
+                      com.google.longrunning.Operation>(this, METHODID_COPY_BACKUP)))
+          .addMethod(
               getGetBackupMethod(),
               io.grpc.stub.ServerCalls.asyncUnaryCall(
                   new MethodHandlers<
@@ -1301,6 +1436,13 @@ public final class DatabaseAdminGrpc {
                       com.google.spanner.admin.database.v1.ListBackupOperationsRequest,
                       com.google.spanner.admin.database.v1.ListBackupOperationsResponse>(
                       this, METHODID_LIST_BACKUP_OPERATIONS)))
+          .addMethod(
+              getListDatabaseRolesMethod(),
+              io.grpc.stub.ServerCalls.asyncUnaryCall(
+                  new MethodHandlers<
+                      com.google.spanner.admin.database.v1.ListDatabaseRolesRequest,
+                      com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>(
+                      this, METHODID_LIST_DATABASE_ROLES)))
           .build();
     }
   }
@@ -1545,6 +1687,31 @@ public final class DatabaseAdminGrpc {
      *
      *
      * <pre>
+     * Starts copying a Cloud Spanner Backup.
+     * The returned backup [long-running operation][google.longrunning.Operation]
+     * will have a name of the format
+     * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+     * and can be used to track copying of the backup. The operation is associated
+     * with the destination backup.
+     * The [metadata][google.longrunning.Operation.metadata] field type is
+     * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata].
+     * The [response][google.longrunning.Operation.response] field type is
+     * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the
+     * copying and delete the backup.
+     * Concurrent CopyBackup requests can run on the same source backup.
+     * </pre>
+     */
+    public void copyBackup(
+        com.google.spanner.admin.database.v1.CopyBackupRequest request,
+        io.grpc.stub.StreamObserver<com.google.longrunning.Operation> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getCopyBackupMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     *
+     *
+     * <pre>
      * Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup].
      * </pre>
      */
@@ -1686,6 +1853,23 @@ public final class DatabaseAdminGrpc {
             responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getListBackupOperationsMethod(), getCallOptions()),
+          request,
+          responseObserver);
+    }
+
+    /**
+     *
+     *
+     * <pre>
+     * Lists Cloud Spanner database roles.
+     * </pre>
+     */
+    public void listDatabaseRoles(
+        com.google.spanner.admin.database.v1.ListDatabaseRolesRequest request,
+        io.grpc.stub.StreamObserver<com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>
+            responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getListDatabaseRolesMethod(), getCallOptions()),
           request,
           responseObserver);
     }
@@ -1896,6 +2080,30 @@ public final class DatabaseAdminGrpc {
      *
      *
      * <pre>
+     * Starts copying a Cloud Spanner Backup.
+     * The returned backup [long-running operation][google.longrunning.Operation]
+     * will have a name of the format
+     * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+     * and can be used to track copying of the backup. The operation is associated
+     * with the destination backup.
+     * The [metadata][google.longrunning.Operation.metadata] field type is
+     * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata].
+     * The [response][google.longrunning.Operation.response] field type is
+     * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the
+     * copying and delete the backup.
+     * Concurrent CopyBackup requests can run on the same source backup.
+     * </pre>
+     */
+    public com.google.longrunning.Operation copyBackup(
+        com.google.spanner.admin.database.v1.CopyBackupRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getCopyBackupMethod(), getCallOptions(), request);
+    }
+
+    /**
+     *
+     *
+     * <pre>
      * Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup].
      * </pre>
      */
@@ -2016,6 +2224,19 @@ public final class DatabaseAdminGrpc {
         com.google.spanner.admin.database.v1.ListBackupOperationsRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getListBackupOperationsMethod(), getCallOptions(), request);
+    }
+
+    /**
+     *
+     *
+     * <pre>
+     * Lists Cloud Spanner database roles.
+     * </pre>
+     */
+    public com.google.spanner.admin.database.v1.ListDatabaseRolesResponse listDatabaseRoles(
+        com.google.spanner.admin.database.v1.ListDatabaseRolesRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getListDatabaseRolesMethod(), getCallOptions(), request);
     }
   }
 
@@ -2230,6 +2451,30 @@ public final class DatabaseAdminGrpc {
      *
      *
      * <pre>
+     * Starts copying a Cloud Spanner Backup.
+     * The returned backup [long-running operation][google.longrunning.Operation]
+     * will have a name of the format
+     * `projects/&lt;project&gt;/instances/&lt;instance&gt;/backups/&lt;backup&gt;/operations/&lt;operation_id&gt;`
+     * and can be used to track copying of the backup. The operation is associated
+     * with the destination backup.
+     * The [metadata][google.longrunning.Operation.metadata] field type is
+     * [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata].
+     * The [response][google.longrunning.Operation.response] field type is
+     * [Backup][google.spanner.admin.database.v1.Backup], if successful. Cancelling the returned operation will stop the
+     * copying and delete the backup.
+     * Concurrent CopyBackup requests can run on the same source backup.
+     * </pre>
+     */
+    public com.google.common.util.concurrent.ListenableFuture<com.google.longrunning.Operation>
+        copyBackup(com.google.spanner.admin.database.v1.CopyBackupRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getCopyBackupMethod(), getCallOptions()), request);
+    }
+
+    /**
+     *
+     *
+     * <pre>
      * Gets metadata on a pending or completed [Backup][google.spanner.admin.database.v1.Backup].
      * </pre>
      */
@@ -2357,6 +2602,20 @@ public final class DatabaseAdminGrpc {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getListBackupOperationsMethod(), getCallOptions()), request);
     }
+
+    /**
+     *
+     *
+     * <pre>
+     * Lists Cloud Spanner database roles.
+     * </pre>
+     */
+    public com.google.common.util.concurrent.ListenableFuture<
+            com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>
+        listDatabaseRoles(com.google.spanner.admin.database.v1.ListDatabaseRolesRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getListDatabaseRolesMethod(), getCallOptions()), request);
+    }
   }
 
   private static final int METHODID_LIST_DATABASES = 0;
@@ -2369,13 +2628,15 @@ public final class DatabaseAdminGrpc {
   private static final int METHODID_GET_IAM_POLICY = 7;
   private static final int METHODID_TEST_IAM_PERMISSIONS = 8;
   private static final int METHODID_CREATE_BACKUP = 9;
-  private static final int METHODID_GET_BACKUP = 10;
-  private static final int METHODID_UPDATE_BACKUP = 11;
-  private static final int METHODID_DELETE_BACKUP = 12;
-  private static final int METHODID_LIST_BACKUPS = 13;
-  private static final int METHODID_RESTORE_DATABASE = 14;
-  private static final int METHODID_LIST_DATABASE_OPERATIONS = 15;
-  private static final int METHODID_LIST_BACKUP_OPERATIONS = 16;
+  private static final int METHODID_COPY_BACKUP = 10;
+  private static final int METHODID_GET_BACKUP = 11;
+  private static final int METHODID_UPDATE_BACKUP = 12;
+  private static final int METHODID_DELETE_BACKUP = 13;
+  private static final int METHODID_LIST_BACKUPS = 14;
+  private static final int METHODID_RESTORE_DATABASE = 15;
+  private static final int METHODID_LIST_DATABASE_OPERATIONS = 16;
+  private static final int METHODID_LIST_BACKUP_OPERATIONS = 17;
+  private static final int METHODID_LIST_DATABASE_ROLES = 18;
 
   private static final class MethodHandlers<Req, Resp>
       implements io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -2450,6 +2711,11 @@ public final class DatabaseAdminGrpc {
               (com.google.spanner.admin.database.v1.CreateBackupRequest) request,
               (io.grpc.stub.StreamObserver<com.google.longrunning.Operation>) responseObserver);
           break;
+        case METHODID_COPY_BACKUP:
+          serviceImpl.copyBackup(
+              (com.google.spanner.admin.database.v1.CopyBackupRequest) request,
+              (io.grpc.stub.StreamObserver<com.google.longrunning.Operation>) responseObserver);
+          break;
         case METHODID_GET_BACKUP:
           serviceImpl.getBackup(
               (com.google.spanner.admin.database.v1.GetBackupRequest) request,
@@ -2491,6 +2757,13 @@ public final class DatabaseAdminGrpc {
               (com.google.spanner.admin.database.v1.ListBackupOperationsRequest) request,
               (io.grpc.stub.StreamObserver<
                       com.google.spanner.admin.database.v1.ListBackupOperationsResponse>)
+                  responseObserver);
+          break;
+        case METHODID_LIST_DATABASE_ROLES:
+          serviceImpl.listDatabaseRoles(
+              (com.google.spanner.admin.database.v1.ListDatabaseRolesRequest) request,
+              (io.grpc.stub.StreamObserver<
+                      com.google.spanner.admin.database.v1.ListDatabaseRolesResponse>)
                   responseObserver);
           break;
         default:
@@ -2567,6 +2840,7 @@ public final class DatabaseAdminGrpc {
                       .addMethod(getGetIamPolicyMethod())
                       .addMethod(getTestIamPermissionsMethod())
                       .addMethod(getCreateBackupMethod())
+                      .addMethod(getCopyBackupMethod())
                       .addMethod(getGetBackupMethod())
                       .addMethod(getUpdateBackupMethod())
                       .addMethod(getDeleteBackupMethod())
@@ -2574,6 +2848,7 @@ public final class DatabaseAdminGrpc {
                       .addMethod(getRestoreDatabaseMethod())
                       .addMethod(getListDatabaseOperationsMethod())
                       .addMethod(getListBackupOperationsMethod())
+                      .addMethod(getListDatabaseRolesMethod())
                       .build();
         }
       }

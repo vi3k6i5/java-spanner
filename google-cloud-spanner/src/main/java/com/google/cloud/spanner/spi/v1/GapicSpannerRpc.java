@@ -60,6 +60,7 @@ import com.google.cloud.grpc.GcpManagedChannelOptions;
 import com.google.cloud.grpc.GcpManagedChannelOptions.GcpMetricsOptions;
 import com.google.cloud.grpc.GrpcTransportOptions;
 import com.google.cloud.spanner.AdminRequestsPerMinuteExceededException;
+import com.google.cloud.spanner.BackupId;
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Restore;
 import com.google.cloud.spanner.SpannerException;
@@ -102,12 +103,15 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Timestamp;
 import com.google.spanner.admin.database.v1.Backup;
+import com.google.spanner.admin.database.v1.CopyBackupMetadata;
+import com.google.spanner.admin.database.v1.CopyBackupRequest;
 import com.google.spanner.admin.database.v1.CreateBackupMetadata;
 import com.google.spanner.admin.database.v1.CreateBackupRequest;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
 import com.google.spanner.admin.database.v1.CreateDatabaseRequest;
 import com.google.spanner.admin.database.v1.Database;
 import com.google.spanner.admin.database.v1.DatabaseAdminGrpc;
+import com.google.spanner.admin.database.v1.DatabaseRole;
 import com.google.spanner.admin.database.v1.DeleteBackupRequest;
 import com.google.spanner.admin.database.v1.DropDatabaseRequest;
 import com.google.spanner.admin.database.v1.GetBackupRequest;
@@ -119,6 +123,8 @@ import com.google.spanner.admin.database.v1.ListBackupsRequest;
 import com.google.spanner.admin.database.v1.ListBackupsResponse;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsRequest;
 import com.google.spanner.admin.database.v1.ListDatabaseOperationsResponse;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesRequest;
+import com.google.spanner.admin.database.v1.ListDatabaseRolesResponse;
 import com.google.spanner.admin.database.v1.ListDatabasesRequest;
 import com.google.spanner.admin.database.v1.ListDatabasesResponse;
 import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
@@ -175,6 +181,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
@@ -187,6 +195,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.threeten.bp.Duration;
 
@@ -578,18 +588,19 @@ public class GapicSpannerRpc implements SpannerRpc {
   }
 
   private static HeaderProvider headerProviderWithUserAgentFrom(HeaderProvider headerProvider) {
+    final Optional<Entry<String, String>> existingUserAgentEntry =
+        headerProvider.getHeaders().entrySet().stream()
+            .filter(entry -> entry.getKey().equalsIgnoreCase(USER_AGENT_KEY))
+            .findFirst();
+    final String existingUserAgentValue = existingUserAgentEntry.map(Entry::getValue).orElse(null);
+    final String userAgent =
+        Stream.of(existingUserAgentValue, DEFAULT_USER_AGENT)
+            .filter(Objects::nonNull)
+            .collect(Collectors.joining(" "));
+
     final Map<String, String> headersWithUserAgent = new HashMap<>(headerProvider.getHeaders());
-    String userAgent = null;
-    for (Entry<String, String> entry : headersWithUserAgent.entrySet()) {
-      if (entry.getKey().equalsIgnoreCase(USER_AGENT_KEY)) {
-        userAgent = entry.getValue();
-        headersWithUserAgent.remove(entry.getKey());
-        break;
-      }
-    }
-    headersWithUserAgent.put(
-        USER_AGENT_KEY,
-        userAgent == null ? DEFAULT_USER_AGENT : userAgent + " " + DEFAULT_USER_AGENT);
+    existingUserAgentEntry.ifPresent(entry -> headersWithUserAgent.remove(entry.getKey()));
+    headersWithUserAgent.put(USER_AGENT_KEY, userAgent);
 
     return FixedHeaderProvider.create(headersWithUserAgent);
   }
@@ -995,6 +1006,27 @@ public class GapicSpannerRpc implements SpannerRpc {
   }
 
   @Override
+  public Paginated<DatabaseRole> listDatabaseRoles(
+      String databaseName, int pageSize, @Nullable String pageToken) {
+    acquireAdministrativeRequestsRateLimiter();
+    ListDatabaseRolesRequest.Builder requestBuilder =
+        ListDatabaseRolesRequest.newBuilder().setParent(databaseName).setPageSize(pageSize);
+
+    if (pageToken != null) {
+      requestBuilder.setPageToken(pageToken);
+    }
+    final ListDatabaseRolesRequest request = requestBuilder.build();
+
+    final GrpcCallContext context =
+        newCallContext(null, databaseName, request, DatabaseAdminGrpc.getListDatabaseRolesMethod());
+    ListDatabaseRolesResponse response =
+        runWithRetryOnAdministrativeRequestsExceeded(
+            () -> get(databaseAdminStub.listDatabaseRolesCallable().futureCall(request, context)));
+
+    return new Paginated<>(response.getDatabaseRolesList(), response.getNextPageToken());
+  }
+
+  @Override
   public Paginated<Backup> listBackups(
       String instanceName, int pageSize, @Nullable String filter, @Nullable String pageToken)
       throws SpannerException {
@@ -1045,9 +1077,7 @@ public class GapicSpannerRpc implements SpannerRpc {
       Iterable<String> additionalStatements,
       com.google.cloud.spanner.Database databaseInfo)
       throws SpannerException {
-    final String databaseId =
-        createDatabaseStatement.substring(
-            "CREATE DATABASE `".length(), createDatabaseStatement.length() - 1);
+    final String databaseId = databaseInfo.getId().getDatabase();
     CreateDatabaseRequest.Builder requestBuilder =
         CreateDatabaseRequest.newBuilder()
             .setParent(instanceName)
@@ -1056,6 +1086,9 @@ public class GapicSpannerRpc implements SpannerRpc {
     if (databaseInfo.getEncryptionConfig() != null) {
       requestBuilder.setEncryptionConfig(
           EncryptionConfigProtoMapper.encryptionConfig(databaseInfo.getEncryptionConfig()));
+    }
+    if (databaseInfo.getDialect() != null) {
+      requestBuilder.setDatabaseDialect(databaseInfo.getDialect().toProto());
     }
     final CreateDatabaseRequest request = requestBuilder.build();
 
@@ -1259,6 +1292,65 @@ public class GapicSpannerRpc implements SpannerRpc {
   }
 
   @Override
+  public OperationFuture<Backup, CopyBackupMetadata> copyBackup(
+      BackupId sourceBackupId, final com.google.cloud.spanner.Backup destinationBackup)
+      throws SpannerException {
+    Preconditions.checkNotNull(sourceBackupId);
+    Preconditions.checkNotNull(destinationBackup);
+    final String instanceName = destinationBackup.getInstanceId().getName();
+    final String backupId = destinationBackup.getId().getBackup();
+
+    final CopyBackupRequest.Builder requestBuilder =
+        CopyBackupRequest.newBuilder()
+            .setParent(instanceName)
+            .setBackupId(backupId)
+            .setSourceBackup(sourceBackupId.getName())
+            .setExpireTime(destinationBackup.getExpireTime().toProto());
+
+    if (destinationBackup.getEncryptionConfig() != null) {
+      requestBuilder.setEncryptionConfig(
+          EncryptionConfigProtoMapper.copyBackupEncryptionConfig(
+              destinationBackup.getEncryptionConfig()));
+    }
+    final CopyBackupRequest request = requestBuilder.build();
+    final OperationFutureCallable<CopyBackupRequest, Backup, CopyBackupMetadata> callable =
+        new OperationFutureCallable<>(
+            databaseAdminStub.copyBackupOperationCallable(),
+            request,
+            // calling copy backup method of dbClientImpl
+            DatabaseAdminGrpc.getCopyBackupMethod(),
+            instanceName,
+            nextPageToken ->
+                listBackupOperations(
+                    instanceName,
+                    0,
+                    String.format(
+                        "(metadata.@type:type.googleapis.com/%s) AND (metadata.name:%s)",
+                        CopyBackupMetadata.getDescriptor().getFullName(),
+                        String.format("%s/backups/%s", instanceName, backupId)),
+                    nextPageToken),
+            input -> {
+              try {
+                return input
+                    .getMetadata()
+                    .unpack(CopyBackupMetadata.class)
+                    .getProgress()
+                    .getStartTime();
+              } catch (InvalidProtocolBufferException e) {
+                return null;
+              }
+            });
+    return RetryHelper.runWithRetries(
+        callable,
+        databaseAdminStubSettings
+            .copyBackupOperationSettings()
+            .getInitialCallSettings()
+            .getRetrySettings(),
+        new OperationFutureRetryAlgorithm<>(),
+        NanoClock.getDefaultClock());
+  }
+
+  @Override
   public OperationFuture<Database, RestoreDatabaseMetadata> restoreDatabase(final Restore restore) {
     final String databaseInstanceName = restore.getDestination().getInstanceId().getName();
     final String databaseId = restore.getDestination().getDatabase();
@@ -1382,6 +1474,7 @@ public class GapicSpannerRpc implements SpannerRpc {
   public List<Session> batchCreateSessions(
       String databaseName,
       int sessionCount,
+      @Nullable String creatorRole,
       @Nullable Map<String, String> labels,
       @Nullable Map<Option, ?> options)
       throws SpannerException {
@@ -1389,10 +1482,14 @@ public class GapicSpannerRpc implements SpannerRpc {
         BatchCreateSessionsRequest.newBuilder()
             .setDatabase(databaseName)
             .setSessionCount(sessionCount);
+    Session.Builder sessionBuilder = Session.newBuilder();
     if (labels != null && !labels.isEmpty()) {
-      Session.Builder session = Session.newBuilder().putAllLabels(labels);
-      requestBuilder.setSessionTemplate(session);
+      sessionBuilder.putAllLabels(labels);
     }
+    if (creatorRole != null && !creatorRole.isEmpty()) {
+      sessionBuilder.setCreatorRole(creatorRole);
+    }
+    requestBuilder.setSessionTemplate(sessionBuilder);
     BatchCreateSessionsRequest request = requestBuilder.build();
     GrpcCallContext context =
         newCallContext(options, databaseName, request, SpannerGrpc.getBatchCreateSessionsMethod());
@@ -1402,14 +1499,21 @@ public class GapicSpannerRpc implements SpannerRpc {
 
   @Override
   public Session createSession(
-      String databaseName, @Nullable Map<String, String> labels, @Nullable Map<Option, ?> options)
+      String databaseName,
+      @Nullable String creatorRole,
+      @Nullable Map<String, String> labels,
+      @Nullable Map<Option, ?> options)
       throws SpannerException {
     CreateSessionRequest.Builder requestBuilder =
         CreateSessionRequest.newBuilder().setDatabase(databaseName);
+    Session.Builder sessionBuilder = Session.newBuilder();
     if (labels != null && !labels.isEmpty()) {
-      Session.Builder session = Session.newBuilder().putAllLabels(labels);
-      requestBuilder.setSession(session);
+      sessionBuilder.putAllLabels(labels);
     }
+    if (creatorRole != null && !creatorRole.isEmpty()) {
+      sessionBuilder.setCreatorRole(creatorRole);
+    }
+    requestBuilder.setSession(sessionBuilder);
     CreateSessionRequest request = requestBuilder.build();
     GrpcCallContext context =
         newCallContext(options, databaseName, request, SpannerGrpc.getCreateSessionMethod());
